@@ -555,7 +555,7 @@ export default function App() {
               </div>
 
               {/* items table */}
-              <div className="overflow-auto">
+              <div className="overflow-show">
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-100 sticky top-0">
                     <tr className="text-left">
@@ -613,7 +613,7 @@ export default function App() {
 
               <div className="p-3 border-t flex items-center justify-between">
                 <Button className="gap-2" onClick={()=>addItem(sec.id)}><Plus className="h-4 w-4"/>Add line</Button>
-                <div className="text-sm text-neutral-600">Section Subtotal: <span className="font-medium tabular-nums">{money(sectionSubtotal(sec))}</span></div>
+                <div className="text-sm text-neutral-600">{sec.name} Subtotal: <span className="font-medium tabular-nums">{money(sectionSubtotal(sec))}</span></div>
               </div>
             </CardContent>
           </Card>
