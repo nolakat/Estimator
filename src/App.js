@@ -23,6 +23,7 @@ const defaultSection = (name = "Section 1") => ({
   id: uuid(),
   name,
   items: [defaultItem()],
+  notes: "",
 });
 
 const emptyProject = (name = "New Project") => ({
@@ -412,6 +413,9 @@ export default function App() {
         String(Number(it.qty || 0) * Number(it.unitCost || 0)),
       ]));
       rows.push(["Section Subtotal", String(sectionSubtotal(sec))]);
+      if (sec.notes && sec.notes.trim()) {
+        rows.push(["Section Notes", sec.notes]);
+      }
       rows.push([""]);
     });
 
@@ -615,6 +619,22 @@ export default function App() {
                 <Button className="gap-2" onClick={()=>addItem(sec.id)}><Plus className="h-4 w-4"/>Add line</Button>
                 <div className="text-sm text-neutral-600">{sec.name} Subtotal: <span className="font-medium tabular-nums">{money(sectionSubtotal(sec))}</span></div>
               </div>
+
+              {/* Section Notes */}
+              <div className="p-3 border-t bg-gray-50">
+                <Label className="text-sm font-medium text-gray-700">Section Notes</Label>
+                <textarea
+                  className="mt-2 w-full rounded-md border border-gray-300 p-2 text-sm min-h-20 resize-none"
+                  placeholder="Add notes for this section..."
+                  value={sec.notes || ""}
+                  onChange={(e) => {
+                    const updatedSections = active.sections.map(s =>
+                      s.id === sec.id ? { ...s, notes: e.target.value } : s
+                    );
+                    updateActive({ sections: updatedSections });
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -677,6 +697,8 @@ export default function App() {
           header, .print\\:hidden { display: none !important; }
           .print\\:grid-cols-2 { grid-template-columns: 1fr 1fr; }
           body { background: white; }
+          .bg-gray-50 { background-color: #f9fafb !important; }
+          textarea { border: 1px solid #d1d5db !important; background: white !important; }
         }
       `}</style>
     </div>
