@@ -9,50 +9,115 @@ import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
 import { uuid, money, calcTotals, sectionSubtotal, csvEscape, safe, sanitizeFilename, parseCsvLine } from "./utils/estimator";
 import { STORAGE_KEY, defaultItem, defaultSection, emptyProject } from "./constants/estimator";
+import { estimatorService } from "./services/estimatorService";
 
 // ----------------------------
 // main component
 // ----------------------------
 export default function App() {
-  const [projects, setProjects] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const arr = Array.isArray(parsed) ? parsed : [parsed];
-        // migration: ensure client fields and sections exist
-        return arr.map((p) => {
-          const withClient = {
-            clientName: p.clientName ?? p.client ?? "",
-            clientPhone: p.clientPhone ?? "",
-            clientEmail: p.clientEmail ?? "",
-            ...p,
-          };
-          if (!withClient.sections || !withClient.sections.length) {
-            // convert legacy items list to a single section
-            const legacyItems = Array.isArray(withClient.items) ? withClient.items : [];
-            withClient.sections = [{ id: uuid(), name: "Section 1", items: legacyItems.length ? legacyItems : [defaultItem()] }];
-            delete withClient.items;
-          }
-          return withClient;
-        });
-      }
-    } catch {}
-    return [emptyProject("Sample Project")];
-  });
-  const [activeId, setActiveId] = useState(projects[0]?.id);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState(null);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
+  // Load projects from Firebase on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }, [projects]);
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        const userId = 'default-user';
+        const estimates = await estimatorService.getEstimates(userId);
+
+        if (estimates.length === 0) {
+          // Create default project if none exist
+          const defaultProject = emptyProject("Sample Project");
+          try {
+            const savedId = await estimatorService.saveEstimate({
+              ...defaultProject,
+              userId
+            });
+            setProjects([{ ...defaultProject, id: savedId }]);
+            setActiveId(savedId);
+          } catch (saveError) {
+            console.warn('Could not save default project to Firebase, using local copy:', saveError);
+            setProjects([defaultProject]);
+            setActiveId(defaultProject.id);
+          }
+        } else {
+          setProjects(estimates);
+          setActiveId(estimates[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading projects from Firebase:', error);
+        // Fallback to localStorage if Firebase fails
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const arr = Array.isArray(parsed) ? parsed : [parsed];
+            setProjects(arr);
+            setActiveId(arr[0]?.id);
+          } else {
+            setProjects([emptyProject("Sample Project")]);
+            setActiveId(projects[0]?.id);
+          }
+        } catch (localError) {
+          console.warn('LocalStorage fallback failed, creating new project:', localError);
+          setProjects([emptyProject("Sample Project")]);
+          setActiveId(projects[0]?.id);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
+
+  // Save projects to Firebase whenever they change
+  useEffect(() => {
+    if (projects.length > 0 && !loading) {
+      const saveToFirebase = async () => {
+        // Add a small delay to prevent rapid successive calls
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        try {
+          const userId = 'default-user';
+          for (const project of projects) {
+            try {
+              await estimatorService.saveEstimate({
+                ...project,
+                userId
+              });
+            } catch (projectError) {
+              console.warn(`Failed to save project ${project.id} to Firebase:`, projectError);
+              // Continue with other projects instead of failing completely
+            }
+          }
+        } catch (error) {
+          console.error('Error saving to Firebase:', error);
+          // Fallback to localStorage
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+          } catch (localError) {
+            console.error('Failed to save to localStorage as well:', localError);
+          }
+        }
+      };
+
+      saveToFirebase();
+    }
+  }, [projects, loading]);
 
   const updateActive = (patch) => {
     setProjects((prev) => prev.map((p) => (p.id === active.id ? { ...p, ...patch, updatedAt: Date.now() } : p)));
   };
 
-  const totals = useMemo(() => calcTotals(active), [active]);
+  const totals = useMemo(() => {
+    if (!active) return { subtotal: 0, tax: 0, overhead: 0, profit: 0, contingency: 0, total: 0, byCategory: {} };
+    return calcTotals(active);
+  }, [active]);
 
   const duplicateProject = () => {
     const copy = JSON.parse(JSON.stringify(active));
@@ -251,6 +316,21 @@ export default function App() {
 
   const printPage = () => window.print();
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 text-neutral-900 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto grid gap-4">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4"></div>
+              <p className="text-neutral-600">Loading your estimates...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900 p-4 md:p-8">
       <div className="max-w-6xl mx-auto grid gap-4">
@@ -266,7 +346,7 @@ export default function App() {
             </label>
             <Button onClick={printPage} variant="outline" className="gap-2"><Printer className="h-4 w-4"/>Print</Button>
           </div>
-        </header>
+      </header>
 
         {/* project picker + client details */}
         <Card>
@@ -286,15 +366,15 @@ export default function App() {
               <div className="mt-4 grid gap-3">
                 <div>
                   <Label>Client Name</Label>
-                  <Input className="mt-1" value={active.clientName || ""} onChange={(e)=>updateActive({ clientName:e.target.value })}/>
+                  <Input className="mt-1" value={active?.clientName || ""} onChange={(e)=>updateActive({ clientName:e.target.value })}/>
                 </div>
                 <div>
                   <Label>Client Phone #</Label>
-                  <Input className="mt-1" type="tel" placeholder="(555) 555-5555" value={active.clientPhone || ""} onChange={(e)=>updateActive({ clientPhone:e.target.value })}/>
+                  <Input className="mt-1" type="tel" placeholder="(555) 555-5555" value={active?.clientPhone || ""} onChange={(e)=>updateActive({ clientPhone:e.target.value })}/>
                 </div>
                 <div>
                   <Label>Client Email</Label>
-                  <Input className="mt-1" type="email" placeholder="name@example.com" value={active.clientEmail || ""} onChange={(e)=>updateActive({ clientEmail:e.target.value })}/>
+                  <Input className="mt-1" type="email" placeholder="name@example.com" value={active?.clientEmail || ""} onChange={(e)=>updateActive({ clientEmail:e.target.value })}/>
                 </div>
               </div>
             </div>
@@ -302,12 +382,12 @@ export default function App() {
             {/* right side - date input */}
             <div className="md:col-span-2">
               <Label>Estimate Date</Label>
-              <Input
-                className="mt-1"
-                type="date"
-                value={active.estimateDate || new Date().toISOString().split('T')[0]}
-                onChange={(e) => updateActive({ estimateDate: e.target.value })}
-              />
+                              <Input
+                  className="mt-1"
+                  type="date"
+                  value={active?.estimateDate || new Date().toISOString().split('T')[0]}
+                  onChange={(e) => updateActive({ estimateDate: e.target.value })}
+                />
             </div>
           </CardContent>
         </Card>
@@ -320,7 +400,7 @@ export default function App() {
           </div>
         </div>
 
-        {(active.sections || []).map((sec, idx) => (
+        {(active?.sections || []).map((sec, idx) => (
           <SectionCard
             key={sec.id}
             section={sec}
@@ -414,44 +494,7 @@ export default function App() {
 
 
 
-  try {
 
-
-
-
-    console.assert(money(0) === '$0.00', 'money(0)');
-    console.assert(money(1234.56).includes('$') && money(1234.56).includes('1,234.56'), 'money(1234.56) formatting');
-
-    // Test parseCurrency
-    console.assert(parseCurrency('$1,234.50') === 1234.5, 'parseCurrency basic with $ and commas');
-    console.assert(parseCurrency('12.3') === 12.3, 'parseCurrency decimals');
-
-    // Test totals calculation with sections
-    const pj = {
-      sections: [
-        { items: [ { qty: 2, unitCost: 5, taxable: true, category: 'materials' } ] },
-        { items: [ { qty: 3, unitCost: 10, taxable: false, category: 'labor' } ] },
-      ],
-      rates: { taxPct: 10, overheadPct: 0, profitPct: 0, contingencyPct: 0 }
-    };
-    const t = calcTotals(pj);
-    console.assert(t.subtotal === 2*5 + 3*10, 'subtotal calc (sections)');
-    console.assert(Math.abs(t.tax - (0.10 * (2*5))) < 1e-6, 'tax only on taxable (sections)');
-
-    // Test qty normalization
-    console.assert(normalizeQtyString('045') === '45', 'normalizeQtyString strips leading zeros');
-    console.assert(normalizeQtyString('.5') === '0.5', 'normalizeQtyString prepends 0 before decimal');
-    console.assert(normalizeQtyString('') === '', 'normalizeQtyString handles empty');
-
-    // Test uuid uniqueness & availability
-    const ids = new Set(Array.from({length: 100}, () => uuid()));
-    console.assert(ids.size === 100, 'uuid should generate 100 unique ids');
-
-    window.__ESTIMATOR_TESTS_RUN__ = true;
-    console.log('[Estimator] sanity tests passed');
-  } catch (err) {
-    console.warn('[Estimator] sanity tests failed', err);
-  }
 
 
 

@@ -16,18 +16,23 @@ export const money = (n) => {
 
 export const allItems = (project) => {
   // flatten items across sections, tolerate legacy `items`
+  if (!project) return [];
   if (project.sections?.length) return project.sections.flatMap((s) => s.items || []);
   return project.items || [];
 };
 
 export function calcTotals(project) {
+  if (!project) {
+    return { subtotal: 0, tax: 0, overhead: 0, profit: 0, contingency: 0, total: 0, byCategory: {} };
+  }
+
   const items = allItems(project);
   const subtotal = items.reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.unitCost || 0), 0);
   const taxableBase = items.reduce((sum, it) => sum + (it.taxable ? Number(it.qty || 0) * Number(it.unitCost || 0) : 0), 0);
-  const tax = (project.rates.taxPct / 100) * taxableBase;
-  const overhead = (project.rates.overheadPct / 100) * subtotal;
-  const profit = (project.rates.profitPct / 100) * (subtotal + overhead + tax);
-  const contingency = (project.rates.contingencyPct / 100) * (subtotal + overhead + tax + profit);
+  const tax = (project.rates?.taxPct / 100) * taxableBase;
+  const overhead = (project.rates?.overheadPct / 100) * subtotal;
+  const profit = (project.rates?.profitPct / 100) * (subtotal + overhead + tax);
+  const contingency = (project.rates?.contingencyPct / 100) * (subtotal + overhead + tax + profit);
   const total = subtotal + tax + overhead + profit + contingency;
   const byCategory = items.reduce((acc, it) => {
     const line = Number(it.qty || 0) * Number(it.unitCost || 0);
@@ -37,7 +42,26 @@ export function calcTotals(project) {
   return { subtotal, tax, overhead, profit, contingency, total, byCategory };
 }
 
-export const sectionSubtotal = (section) => (section.items || []).reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.unitCost || 0), 0);
+export const sectionSubtotal = (section) => {
+  if (!section) return 0;
+  return (section.items || []).reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.unitCost || 0), 0);
+};
+
+// Normalize quantity string (remove leading zeros, handle decimals)
+export const normalizeQtyString = (s) => {
+  s = String(s ?? "");
+  // keep only digits and dots
+  s = s.replace(/[^0-9.]/g, "");
+  // collapse to a single dot
+  const firstDot = s.indexOf(".");
+  if (firstDot !== -1) s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+  const [rawInt, rawDec] = s.split(".");
+  let int = (rawInt ?? "").replace(/^0+(?=\d)/, ""); // remove leading zeros if followed by another digit
+  let dec = rawDec;
+  if ((int === "" || int === undefined) && dec !== undefined) int = "0"; // e.g., ".5" -> "0.5"
+  if (int === undefined) int = "";
+  return dec !== undefined ? `${int}.${dec}` : int;
+};
 
 // parse currency-like text to number (e.g. "$1,234.50" -> 1234.5)
 export function parseCurrency(str) {
