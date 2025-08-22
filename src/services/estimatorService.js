@@ -31,6 +31,7 @@ export const estimatorService = {
       }));
     } catch (error) {
       console.error('Error getting estimates:', error);
+      // Don't throw - let the calling code handle it
       throw error;
     }
   },

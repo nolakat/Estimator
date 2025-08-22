@@ -18,19 +18,56 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
+  const [firebaseError, setFirebaseError] = useState(false);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
-  // Load projects from Firebase on mount
-  useEffect(() => {
-    const loadProjects = async () => {
+
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      const userId = 'default-user';
+
+      // First, try to load from localStorage as a backup
+      let localProjects = [];
       try {
-        setLoading(true);
-        const userId = 'default-user';
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          localProjects = Array.isArray(parsed) ? parsed : [parsed];
+        }
+      } catch (localError) {
+        console.warn('LocalStorage parse failed:', localError);
+      }
+
+      // Try Firebase first
+      try {
         const estimates = await estimatorService.getEstimates(userId);
 
-        if (estimates.length === 0) {
-          // Create default project if none exist
+        if (estimates.length > 0) {
+          // Firebase has data - use it
+          setProjects(estimates);
+          setActiveId(estimates[0].id);
+          console.log('Loaded', estimates.length, 'projects from Firebase');
+        } else if (localProjects.length > 0) {
+          // Firebase is empty but localStorage has data - restore to Firebase
+          console.log('Firebase empty, restoring', localProjects.length, 'projects from localStorage');
+          setProjects(localProjects);
+          setActiveId(localProjects[0].id);
+
+          // Try to save these projects to Firebase
+          for (const project of localProjects) {
+            try {
+              await estimatorService.saveEstimate({
+                ...project,
+                userId
+              });
+            } catch (saveError) {
+              console.warn('Failed to restore project to Firebase:', saveError);
+            }
+          }
+        } else {
+          // Both are empty - create default project
           const defaultProject = emptyProject("Sample Project");
           try {
             const savedId = await estimatorService.saveEstimate({
@@ -44,34 +81,33 @@ export default function App() {
             setProjects([defaultProject]);
             setActiveId(defaultProject.id);
           }
-        } else {
-          setProjects(estimates);
-          setActiveId(estimates[0].id);
         }
-      } catch (error) {
-        console.error('Error loading projects from Firebase:', error);
-        // Fallback to localStorage if Firebase fails
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            const arr = Array.isArray(parsed) ? parsed : [parsed];
-            setProjects(arr);
-            setActiveId(arr[0]?.id);
-          } else {
-            setProjects([emptyProject("Sample Project")]);
-            setActiveId(projects[0]?.id);
-          }
-        } catch (localError) {
-          console.warn('LocalStorage fallback failed, creating new project:', localError);
+      } catch (firebaseError) {
+        console.error('Firebase failed, using localStorage:', firebaseError);
+
+        if (localProjects.length > 0) {
+          // Use localStorage data
+          setProjects(localProjects);
+          setActiveId(localProjects[0].id);
+          console.log('Using', localProjects.length, 'projects from localStorage');
+        } else {
+          // Create new project
           setProjects([emptyProject("Sample Project")]);
           setActiveId(projects[0]?.id);
         }
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Critical error in loadProjects:', error);
+      // Last resort - create new project
+      setProjects([emptyProject("Sample Project")]);
+      setActiveId(projects[0]?.id);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Load projects from Firebase on mount
+  useEffect(() => {
     loadProjects();
   }, []);
 
@@ -223,15 +259,16 @@ export default function App() {
   };
 
   const exportCSV = () => {
+
     const rows = [
       ["Project", active.name],
+      ["Estimate Number", active.estimateNumber || "#001"], // Add this line
       ["Client Name", active.clientName || ""],
       ["Client Phone", active.clientPhone || ""],
       ["Client Email", active.clientEmail || ""],
       ["Estimate Date", active.estimateDate || ""],
       [""],
     ];
-
     (active.sections || []).forEach((sec, idx) => {
       rows.push([`Section ${idx + 1}: ${sec.name}`]);
       rows.push(["Description", "Category", "Qty", "Unit", "Unit Cost", "Taxable", "Line Total"]);
@@ -316,6 +353,28 @@ export default function App() {
 
   const printPage = () => window.print();
 
+  const manualSave = async () => {
+    try {
+      const userId = 'default-user';
+      for (const project of projects) {
+        await estimatorService.saveEstimate({
+          ...project,
+          userId
+        });
+      }
+      // Show a brief success message
+      alert('All projects saved successfully!');
+    } catch (error) {
+      console.error('Error saving projects:', error);
+      alert('Error saving projects. Check console for details.');
+    }
+  };
+
+  const retryFirebase = () => {
+    setFirebaseError(false);
+    loadProjects();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 text-neutral-900 p-4 md:p-8">
@@ -324,6 +383,9 @@ export default function App() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4"></div>
               <p className="text-neutral-600">Loading your estimates...</p>
+              {firebaseError && (
+                <Button onClick={retryFirebase} className="mt-4">Retry Firebase</Button>
+              )}
             </div>
           </div>
         </div>
@@ -344,6 +406,7 @@ export default function App() {
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer bg-white"><Upload className="h-4 w-4"/> Import CSV
               <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
             </label>
+            <Button onClick={manualSave} variant="secondary" className="gap-2"><Save className="h-4 w-4"/>Save</Button>
             <Button onClick={printPage} variant="outline" className="gap-2"><Printer className="h-4 w-4"/>Print</Button>
           </div>
       </header>
@@ -382,12 +445,23 @@ export default function App() {
             {/* right side - date input */}
             <div className="md:col-span-2">
               <Label>Estimate Date</Label>
-                              <Input
+                <Input
                   className="mt-1"
                   type="date"
                   value={active?.estimateDate || new Date().toISOString().split('T')[0]}
                   onChange={(e) => updateActive({ estimateDate: e.target.value })}
                 />
+                    {/* Add Estimate Number field */}
+              <div className="mt-4">
+                <Label>Estimate Number</Label>
+                <Input
+                  className="mt-1"
+                  type="text"
+                  placeholder="#001"
+                  value={active?.estimateNumber || "#001"}
+                  onChange={(e) => updateActive({ estimateNumber: e.target.value })}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

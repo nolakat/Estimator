@@ -39,6 +39,7 @@ export const emptyProject = (name = "New Project") => ({
   },
   notes: "",
   estimateDate: new Date().toISOString().split('T')[0],
+  estimateNumber: "#001", // Add this line
   createdAt: Date.now(),
   updatedAt: Date.now(),
 });
