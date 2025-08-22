@@ -1,12 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, sectionSubtotal }) {
+  // Hide body overflow when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore overflow when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="relative w-full h-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden">
+      <div className="relative w-full h-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-scroll">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gray-50">
           <h2 className="text-2xl font-bold text-gray-900">Estimate Preview</h2>
@@ -34,14 +48,7 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
             {/* Project Details */}
             <div className="p-8 border-b">
               <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Project Information</h3>
-                  <div className="space-y-2 text-gray-700">
-                    <div><span className="font-medium">Estimate Number:</span> {project?.estimateNumber || '#001'}</div>
-                    <div><span className="font-medium">Date:</span> {project?.estimateDate || new Date().toISOString().split('T')[0]}</div>
-                  </div>
-                </div>
-                <div>
+              <div>
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Client Information</h3>
                   <div className="space-y-2 text-gray-700">
                     <div><span className="font-medium">Name:</span> {project?.clientName || 'Not specified'}</div>
@@ -49,6 +56,14 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
                     <div><span className="font-medium">Email:</span> {project?.clientEmail || 'Not specified'}</div>
                   </div>
                 </div>
+                <div>
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Project Information</h3>
+                  <div className="space-y-2 text-gray-700">
+                    <div><span className="font-medium">Estimate Number:</span> {project?.estimateNumber || '#001'}</div>
+                    <div><span className="font-medium">Date:</span> {project?.estimateDate || new Date().toISOString().split('T')[0]}</div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
