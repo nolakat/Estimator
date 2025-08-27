@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { AuthWrapper } from "./components/auth/AuthWrapper";
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
-import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText } from "lucide-react";
+import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, LogIn, LogOut, User } from "lucide-react";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./config/firebase";
+import { LoginPage } from "./components/auth/LoginPage";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -21,6 +25,9 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [firebaseError, setFirebaseError] = useState(false);
   const [showEstimateModal, setShowEstimateModal] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
@@ -107,6 +114,15 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load projects from Firebase on mount
   useEffect(() => {
@@ -382,6 +398,23 @@ export default function App() {
     loadProjects();
   };
 
+  const handleLogin = async (email, password) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      setShowLoginModal(false);
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen p-4 bg-neutral-50 text-neutral-900 md:p-8">
@@ -401,6 +434,7 @@ export default function App() {
   }
 
   return (
+    <AuthWrapper>
     <div className="min-h-screen p-4 bg-neutral-50 text-neutral-900 md:p-8">
       <div className="grid max-w-6xl gap-4 mx-auto">
       <header className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
@@ -416,6 +450,27 @@ export default function App() {
             <Button onClick={manualSave} variant="secondary" className="gap-2"><Save className="w-4 h-4"/>Save</Button>
             <Button onClick={createEstimate} variant="outline" className="gap-2 text-gray-900 bg-yellow-400 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500"><FileText className="w-4 h-4"/>Preview Estimate</Button>
             <Button onClick={printPage} variant="outline" className="gap-2"><Printer className="w-4 h-4"/>Print</Button>
+
+            {/* Auth Button */}
+            <div className="flex items-center gap-2 pl-2 ml-2 border-l border-neutral-300">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 text-sm text-neutral-600">
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline">{user.email}</span>
+                  </div>
+                  <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1">
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => setShowLoginModal(true)} variant="outline" size="sm" className="gap-1">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </Button>
+              )}
+            </div>
           </div>
       </header>
 
@@ -566,6 +621,21 @@ export default function App() {
         sectionSubtotal={sectionSubtotal}
       />
 
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="relative">
+            <button
+              onClick={() => setShowLoginModal(false)}
+              className="absolute z-10 p-1 top-2 right-2 text-neutral-500 hover:text-neutral-700"
+            >
+              ✕
+            </button>
+            <LoginPage onLogin={handleLogin} />
+          </div>
+        </div>
+      )}
+
       {/* print styles */}
       <style>{`
         @media print {
@@ -577,6 +647,7 @@ export default function App() {
         }
       `}</style>
     </div>
+    </AuthWrapper>
   );
 }
 
