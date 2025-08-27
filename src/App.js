@@ -5,9 +5,6 @@ import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, LogIn, LogOut, User } from "lucide-react";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { auth } from "./config/firebase";
-import { LoginPage } from "./components/auth/LoginPage";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -25,8 +22,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [firebaseError, setFirebaseError] = useState(false);
   const [showEstimateModal, setShowEstimateModal] = useState(false);
-  const [user, setUser] = useState(null);
-  const [setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
@@ -115,19 +111,10 @@ export default function App() {
     }
   };
 
-  // Auth state listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  });
-
   // Load projects from Firebase on mount
   useEffect(() => {
     loadProjects();
-  });
+  }, []);
 
   // Save projects to Firebase whenever they change
   useEffect(() => {
@@ -400,7 +387,9 @@ export default function App() {
 
   const handleLogin = async (email, password) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // This part of the code was removed as per the edit hint.
+      // The AuthWrapper will handle the actual login.
+      // For now, we'll just close the modal.
       setShowLoginModal(false);
     } catch (error) {
       throw new Error(error.message);
@@ -409,7 +398,8 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      // This part of the code was removed as per the edit hint.
+      // The AuthWrapper will handle the actual logout.
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -453,23 +443,8 @@ export default function App() {
 
             {/* Auth Button */}
             <div className="flex items-center gap-2 pl-2 ml-2 border-l border-neutral-300">
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-sm text-neutral-600">
-                    <User className="w-4 h-4" />
-                    <span className="hidden sm:inline">{user.email}</span>
-                  </div>
-                  <Button onClick={handleLogout} variant="outline" size="sm" className="gap-1">
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sign Out</span>
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={() => setShowLoginModal(true)} variant="outline" size="sm" className="gap-1">
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sign In</span>
-                </Button>
-              )}
+              {/* This part of the code was removed as per the edit hint. */}
+              {/* The AuthWrapper will handle the login/logout buttons. */}
             </div>
           </div>
       </header>
@@ -677,7 +652,8 @@ export default function App() {
             >
               ✕
             </button>
-            <LoginPage onLogin={handleLogin} />
+            {/* This part of the code was removed as per the edit hint. */}
+            {/* The AuthWrapper will handle the login page. */}
           </div>
         </div>
       )}
