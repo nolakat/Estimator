@@ -26,7 +26,7 @@ export default function App() {
   const [firebaseError, setFirebaseError] = useState(false);
   const [showEstimateModal, setShowEstimateModal] = useState(false);
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [setAuthLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
@@ -122,12 +122,12 @@ export default function App() {
       setAuthLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  });
 
   // Load projects from Firebase on mount
   useEffect(() => {
     loadProjects();
-  }, []);
+  });
 
   // Save projects to Firebase whenever they change
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function App() {
             }
           }
         } catch (error) {
-          console.error('Error saving to Firebase:', error);
+          console.error('Error saving to Firebase:', error.message);
           // Fallback to localStorage
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
@@ -486,6 +486,52 @@ export default function App() {
                   projects={projects}
                 />
                 <Button variant="outline" className="gap-2" onClick={() => updateActive({ name: window.prompt("Project name?", active.name) || active.name })}><Save className="w-4 h-4"/>Rename</Button>
+              </div>
+
+              {/* Business Logo Upload */}
+              <div className="mt-4">
+                <Label>Business Logo</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <Upload className="w-4 h-4"/>
+                    Choose Logo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            updateActive({ businessLogo: event.target?.result });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  {active?.businessLogo && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateActive({ businessLogo: null })}
+                      className="gap-1 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-3 h-3"/>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                {active?.businessLogo && (
+                  <div className="mt-2">
+                    <img
+                      src={active.businessLogo}
+                      alt="Business Logo"
+                      className="object-contain h-12 border rounded max-w-32"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* stacked client info */}

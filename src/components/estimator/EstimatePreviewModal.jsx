@@ -47,6 +47,17 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
 
             {/* Project Details */}
             <div className="p-8 border-b">
+              {/* Business Logo */}
+              {project?.businessLogo && (
+                <div className="flex justify-start mb-6">
+                  <img 
+                    src={project.businessLogo} 
+                    alt="Business Logo" 
+                    className="max-h-[150px] w-auto object-contain"
+                  />
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-8">
               <div>
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Client Information</h3>

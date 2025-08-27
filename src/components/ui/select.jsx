@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 
 export function Select({ children, value, onValueChange, ...props }) {
   return (
@@ -17,7 +16,7 @@ export function SelectTrigger({ children, className = '', onClick, ...props }) {
       {...props}
     >
       {children}
-      <svg className="h-4 w-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
     </button>
@@ -36,7 +35,7 @@ export function SelectContent({ children, isOpen, onClose, ...props }) {
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-full z-50 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg max-h-60 overflow-auto" {...props}>
+    <div className="absolute z-50 w-full mt-1 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg top-full max-h-60" {...props}>
       {children}
       <div className="absolute inset-0 pointer-events-none" onClick={onClose}></div>
     </div>

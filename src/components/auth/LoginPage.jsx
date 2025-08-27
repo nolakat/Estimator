@@ -152,8 +152,8 @@ export function LoginPage({ onLogin, onSignup }) {
 
             {!isSignup && (
               <div>
-                <a
-                  href="#"
+                <button
+                  type="button"
                   className="text-sm text-blue-600 hover:text-blue-500"
                   onClick={(e) => {
                     e.preventDefault();
@@ -162,7 +162,7 @@ export function LoginPage({ onLogin, onSignup }) {
                   }}
                 >
                   Forgot your password?
-                </a>
+                </button>
               </div>
             )}
           </div>
