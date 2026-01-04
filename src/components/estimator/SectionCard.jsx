@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Copy, GripVertical, FileText, Edit3 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, FileText, Edit3 } from 'lucide-react';
 import { CategorySelect } from './CategorySelect';
 import { CurrencyInput } from './CurrencyInput';
 import { QtyInput } from './QtyInput';
@@ -8,7 +8,6 @@ export function SectionCard({
   section,
   sectionIndex,
   onRename,
-  onDuplicate,
   onRemove,
   onAddItem,
   onRemoveItem,
@@ -64,10 +63,6 @@ export function SectionCard({
           <button className={buttonSecondary} onClick={() => onRename(section.id)}>
             <Edit3 className="h-3.5 w-3.5" />
             Rename
-          </button>
-          <button className={buttonSecondary} onClick={() => onDuplicate(section.id)}>
-            <Copy className="h-3.5 w-3.5" />
-            Duplicate
           </button>
           <button className={buttonDanger} onClick={() => onRemove(section.id)}>
             <Trash2 className="h-3.5 w-3.5" />

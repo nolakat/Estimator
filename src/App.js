@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Upload, Printer, Save, FileText, Package, Calculator, HardHat } from "lucide-react";
+import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -187,16 +187,6 @@ export default function App() {
     const name = window.prompt("Rename section", s?.name || "Section");
     if (!name) return;
     updateActive({ sections: active.sections.map((sec) => (sec.id === sectionId ? { ...sec, name } : sec)) });
-  };
-
-  const duplicateSection = (sectionId) => {
-    const s = active.sections.find((x) => x.id === sectionId);
-    if (!s) return;
-    const copy = JSON.parse(JSON.stringify(s));
-    copy.id = uuid();
-    copy.name = `${s.name} (copy)`;
-    copy.items = (copy.items || []).map((it) => ({ ...it, id: uuid() }));
-    updateActive({ sections: [...active.sections, copy] });
   };
 
   const removeSection = (sectionId) => {
@@ -422,52 +412,8 @@ export default function App() {
         <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
           <div className="p-6">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Left Column - Logo & Client */}
+              {/* Left Column - Client Info */}
               <div className="space-y-5">
-                {/* Business Logo */}
-                <div className="p-4 border rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200">
-                  <label className="block mb-2 text-sm font-medium text-slate-700">Business Logo</label>
-                  <div className="flex items-center gap-3">
-                    <label className={`${buttonSecondary} cursor-pointer text-xs px-3 py-2`}>
-                      <Upload className="w-4 h-4"/>
-                      Choose Logo
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              updateActive({ businessLogo: event.target?.result });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-                    {active?.businessLogo && (
-                      <button
-                        onClick={() => updateActive({ businessLogo: null })}
-                        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-red-600 transition-colors rounded-lg hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-3 h-3"/>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  {active?.businessLogo && (
-                    <div className="mt-3">
-                      <img
-                        src={active.businessLogo}
-                        alt="Business Logo"
-                        className="object-contain h-12 border rounded-lg border-slate-200 max-w-32"
-                      />
-                    </div>
-                  )}
-                </div>
-
                 {/* Client Info */}
                 <div className="space-y-4">
                   <div>
@@ -549,7 +495,6 @@ export default function App() {
               section={sec}
               sectionIndex={idx}
               onRename={renameSection}
-              onDuplicate={duplicateSection}
               onRemove={removeSection}
               onAddItem={addItem}
               onRemoveItem={removeItem}
@@ -667,7 +612,7 @@ export default function App() {
         {/* Footer */}
         <footer className="py-6 text-center print:hidden">
           <p className="text-xs text-slate-400">
-            Auto-saved to your browser. Export CSV for backup.
+            Auto-saved to your browser.
           </p>
           <p className="mt-1 text-xs text-slate-300">
             © {new Date().getFullYear()} Contractor Estimate Tool

@@ -19,8 +19,16 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="relative w-full h-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-scroll">
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black bg-opacity-50"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <div className="relative w-full h-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-scroll pointer-events-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gray-50">
           <h2 className="text-2xl font-bold text-gray-900">Estimate Preview</h2>
@@ -50,14 +58,14 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
               {/* Business Logo */}
               {project?.businessLogo && (
                 <div className="flex justify-start mb-6">
-                  <img 
-                    src={project.businessLogo} 
-                    alt="Business Logo" 
+                  <img
+                    src={project.businessLogo}
+                    alt="Business Logo"
                     className="max-h-[150px] w-auto object-contain"
                   />
                 </div>
               )}
-              
+
               <div className="grid grid-cols-2 gap-8">
               <div>
                   <h3 className="mb-4 text-lg font-semibold text-gray-900">Client Information</h3>
@@ -82,7 +90,16 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
             <div className="p-8">
               <h3 className="mb-6 text-2xl font-bold text-gray-900">Scope of Work</h3>
               <div className="space-y-6">
-                {(project?.sections || []).map((section, idx) => (
+                {(project?.sections || [])
+                  .filter(section => {
+                    const validItems = (section.items || []).filter(item => {
+                      const hasDescription = item.desc && item.desc.trim() !== '';
+                      const hasCost = Number(item.qty || 0) * Number(item.unitCost || 0) > 0;
+                      return hasDescription && hasCost;
+                    });
+                    return validItems.length > 0;
+                  })
+                  .map((section, idx) => (
                   <div key={section.id} className="overflow-hidden border rounded-lg">
                     <div className="px-4 py-3 bg-gray-100 border-b">
                       <h4 className="text-lg font-semibold text-gray-900">
@@ -211,6 +228,7 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

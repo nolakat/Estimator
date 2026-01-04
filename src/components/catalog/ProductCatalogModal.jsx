@@ -215,6 +215,18 @@ export function ProductCatalogModal({
                           <h3 className="font-medium text-slate-800 truncate">
                             {product.name}
                           </h3>
+                          {product.url && (
+                            <a
+                              href={product.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-shrink-0 p-1 text-slate-400 hover:text-blue-600 rounded transition-colors duration-150"
+                              title="View product page"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                           {product.brand && (
                             <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 truncate max-w-24">
                               {product.brand}
@@ -251,17 +263,6 @@ export function ProductCatalogModal({
                           <ShoppingCart className="w-4 h-4" />
                           <span className="hidden lg:inline">Add</span>
                         </button>
-                        {product.url && (
-                          <a
-                            href={product.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                            title="View product page"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
                         <button
                           onClick={() => { setEditingProduct(product); setShowProductForm(true); }}
                           className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors duration-150"
