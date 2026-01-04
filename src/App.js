@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, Package, Calculator, FolderOpen, HardHat } from "lucide-react";
+import { Plus, Trash2, Upload, Printer, Save, FileText, Package, Calculator, HardHat } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
 import { EstimatePreviewModal } from "./components/estimator/EstimatePreviewModal";
 import { ProductCatalogModal } from "./components/catalog/ProductCatalogModal";
 import { MaterialCalculatorModal } from "./components/calculators/MaterialCalculatorModal";
-import { uuid, money, calcTotals, sectionSubtotal, csvEscape, safe, sanitizeFilename, parseCsvLine } from "./utils/estimator";
-import { STORAGE_KEY, defaultItem, defaultSection, emptyProject } from "./constants/estimator";
+import { uuid, money, calcTotals, sectionSubtotal } from "./utils/estimator";
+import { STORAGE_KEY, defaultItem, emptyProject } from "./constants/estimator";
 import { estimatorService } from "./services/estimatorService";
 
 // ----------------------------
@@ -160,22 +160,6 @@ export default function App() {
     return calcTotals(active);
   }, [active]);
 
-  const duplicateProject = () => {
-    const copy = JSON.parse(JSON.stringify(active));
-    copy.id = uuid();
-    copy.name = `${active.name} (copy)`;
-    copy.createdAt = Date.now();
-    copy.updatedAt = Date.now();
-    // re-key section and item ids
-    copy.sections = (copy.sections || []).map((s) => ({
-      ...s,
-      id: uuid(),
-      items: (s.items || []).map((it) => ({ ...it, id: uuid() })),
-    }));
-    setProjects((prev) => [...prev, copy]);
-    setActiveId(copy.id);
-  };
-
   const addProject = () => {
     const p = emptyProject(`Project ${projects.length + 1}`);
     setProjects((prev) => [...prev, p]);
@@ -306,100 +290,6 @@ export default function App() {
     }));
   };
 
-  const exportCSV = () => {
-
-    const rows = [
-      ["Project", active.name],
-      ["Estimate Number", active.estimateNumber || "#001"], // Add this line
-      ["Client Name", active.clientName || ""],
-      ["Client Phone", active.clientPhone || ""],
-      ["Client Email", active.clientEmail || ""],
-      ["Estimate Date", active.estimateDate || ""],
-      [""],
-    ];
-    (active.sections || []).forEach((sec, idx) => {
-      rows.push([`Section ${idx + 1}: ${sec.name}`]);
-      rows.push(["Description", "Category", "Qty", "Unit", "Unit Cost", "Taxable", "Line Total"]);
-      rows.push(...(sec.items || []).map((it) => [
-        safe(it.desc),
-        it.category,
-        String(it.qty ?? 0),
-        safe(it.unit),
-        String(it.unitCost ?? 0),
-        it.taxable ? "YES" : "NO",
-        String(Number(it.qty || 0) * Number(it.unitCost || 0)),
-      ]));
-      rows.push(["Section Subtotal", String(sectionSubtotal(sec))]);
-      if (sec.notes && sec.notes.trim()) {
-        rows.push(["Section Notes", sec.notes]);
-      }
-      rows.push([""]);
-    });
-
-    const totals = calcTotals(active);
-    rows.push(["Tax %", String(active.rates.taxPct)]);
-    rows.push(["Overhead %", String(active.rates.overheadPct)]);
-    rows.push(["Profit %", String(active.rates.profitPct)]);
-    rows.push(["Contingency %", String(active.rates.contingencyPct)]);
-    rows.push([""]);
-    rows.push(["Subtotal", String(totals.subtotal)]);
-    rows.push(["Sales Tax", String(totals.tax)]);
-    rows.push(["Overhead", String(totals.overhead)]);
-    rows.push(["Profit", String(totals.profit)]);
-    rows.push(["Contingency", String(totals.contingency)]);
-    rows.push(["Total", String(totals.total)]);
-
-    const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${sanitizeFilename(active.name)}_estimate.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const importCSV = (file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const text = String(reader.result || "");
-        const lines = text.split(/\r?\n/);
-        // very simple importer: loads into the FIRST section it finds/creates
-        let sec = active.sections?.[0] || defaultSection();
-        const items = [];
-        const headerIdx = lines.findIndex((l) => l.startsWith("Description,") || l.startsWith('"Description",'));
-        if (headerIdx !== -1) {
-          for (let i = headerIdx + 1; i < lines.length; i++) {
-            const line = lines[i];
-            if (!line || !line.trim()) break;
-            const cols = parseCsvLine(line);
-            if (cols.length < 7) break; // totals reached
-            const [desc, category, qty, unit, unitCost, taxable] = cols;
-            items.push({
-              id: uuid(),
-              desc: desc || "",
-              category: (category || "materials").toLowerCase(),
-              qty: qty ?? "",
-              unit: unit || "ea",
-              unitCost: Number(unitCost || 0),
-              taxable: /^y(es)?$/i.test(taxable || "YES"),
-            });
-          }
-        }
-        // write into first section
-        updateActive({ sections: [{ ...sec, items }, ...active.sections.slice(1) ] });
-        alert("Imported items into first section.");
-      } catch (e) {
-        alert("Import failed: " + e.message);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-
   const printPage = () => window.print();
 
   const createEstimate = () => {
@@ -485,6 +375,14 @@ export default function App() {
       <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm print:hidden">
         <div className="px-4 py-3 mx-auto max-w-6xl md:px-8">
           <div className="flex flex-wrap items-center gap-2">
+            <ProjectSelect
+              value={active.id}
+              onValueChange={(v) => setActiveId(v)}
+              projects={projects}
+            />
+
+            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
             <button onClick={addProject} className={buttonPrimary}>
               <Plus className="w-4 h-4"/>New
             </button>
@@ -494,13 +392,6 @@ export default function App() {
 
             <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-            <button onClick={exportCSV} className={buttonSecondary}>
-              <Download className="w-4 h-4"/>CSV
-            </button>
-            <label className={`${buttonSecondary} cursor-pointer`}>
-              <Upload className="w-4 h-4"/> Import
-              <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
-            </label>
             <button onClick={manualSave} className={buttonSecondary}>
               <Save className="w-4 h-4"/>Save
             </button>
@@ -531,30 +422,8 @@ export default function App() {
         <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
           <div className="p-6">
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Left Column - Project & Logo */}
+              {/* Left Column - Logo & Client */}
               <div className="space-y-5">
-                <div>
-                  <label className={labelClasses}>
-                    <span className="inline-flex items-center gap-1.5">
-                      <FolderOpen className="w-3.5 h-3.5" />
-                      Project
-                    </span>
-                  </label>
-                  <div className="flex gap-2 mt-1.5">
-                    <ProjectSelect
-                      value={active.id}
-                      onValueChange={(v) => setActiveId(v)}
-                      projects={projects}
-                    />
-                    <button
-                      onClick={() => updateActive({ name: window.prompt("Project name?", active.name) || active.name })}
-                      className={buttonSecondary}
-                    >
-                      <Save className="w-4 h-4"/>Rename
-                    </button>
-                  </div>
-                </div>
-
                 {/* Business Logo */}
                 <div className="p-4 border rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200">
                   <label className="block mb-2 text-sm font-medium text-slate-700">Business Logo</label>
