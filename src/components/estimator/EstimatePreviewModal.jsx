@@ -135,17 +135,6 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
               </div>
             </div>
 
-            {/* Rates & Markups */}
-            <div className="p-8 border-t bg-gray-50">
-              <h3 className="mb-4 text-xl font-bold text-gray-900">Rates & Markups</h3>
-              <div className="grid grid-cols-2 gap-4 text-gray-700">
-                <div><span className="font-medium">Sales Tax:</span> {project?.rates?.taxPct || 0}%</div>
-                <div><span className="font-medium">Overhead:</span> {project?.rates?.overheadPct || 0}%</div>
-                <div><span className="font-medium">Profit:</span> {project?.rates?.profitPct || 0}%</div>
-                <div><span className="font-medium">Contingency:</span> {project?.rates?.contingencyPct || 0}%</div>
-              </div>
-            </div>
-
             {/* Summary */}
             <div className="p-8 bg-white">
               <h3 className="mb-6 text-2xl font-bold text-gray-900">Summary</h3>
@@ -176,18 +165,6 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">Sales Tax:</span>
                   <span className="font-medium text-gray-900">{money(totals?.tax || 0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Overhead:</span>
-                  <span className="font-medium text-gray-900">{money(totals?.overhead || 0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Profit:</span>
-                  <span className="font-medium text-gray-900">{money(totals?.profit || 0)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Contingency:</span>
-                  <span className="font-medium text-gray-900">{money(totals?.contingency || 0)}</span>
                 </div>
 
                 <div className="h-px my-4 bg-gray-300" />
