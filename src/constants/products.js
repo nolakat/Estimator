@@ -24,10 +24,13 @@ export const ITEM_CATEGORIES = [
 export const defaultProduct = () => ({
   id: uuid(),
   name: "",
+  brand: "",
   productCategory: "lumber",
   category: "materials",
   unit: "ea",
   unitPrice: 0,
+  url: "",
+  notes: "",
   createdAt: Date.now(),
   updatedAt: Date.now(),
 });

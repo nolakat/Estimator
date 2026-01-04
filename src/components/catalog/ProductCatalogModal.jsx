@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Search, Edit2, Trash2, ShoppingCart } from 'lucide-react';
+import { X, Plus, Search, Edit2, Trash2, ShoppingCart, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { productService } from '../../services/productService';
@@ -148,7 +148,11 @@ export function ProductCatalogModal({
               </div>
             ) : (
               <div className="grid gap-3">
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product) => {
+                  const updatedDate = product.updatedAt
+                    ? new Date(typeof product.updatedAt === 'number' ? product.updatedAt : product.updatedAt.toDate?.() || product.updatedAt)
+                    : null;
+                  return (
                   <div
                     key={product.id}
                     className="flex items-center justify-between p-4 bg-white border rounded-lg hover:shadow-md transition-shadow"
@@ -156,11 +160,22 @@ export function ProductCatalogModal({
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 truncate">
                         {product.name}
+                        {product.brand && (
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                            ({product.brand})
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {PRODUCT_CATEGORIES.find((c) => c.value === product.productCategory)?.label || product.productCategory}
                         {' '}&bull;{' '}
                         {money(product.unitPrice)} / {product.unit}
+                        {updatedDate && (
+                          <>
+                            {' '}&bull;{' '}
+                            Updated {updatedDate.toLocaleDateString()}
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -173,6 +188,17 @@ export function ProductCatalogModal({
                         <ShoppingCart className="w-4 h-4" />
                         Add
                       </Button>
+                      {product.url && (
+                        <a
+                          href={product.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-10 h-10 text-blue-600 rounded-md hover:bg-blue-50"
+                          title="View product page"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -190,7 +216,8 @@ export function ProductCatalogModal({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

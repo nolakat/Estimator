@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -12,26 +12,47 @@ export function ProductFormModal({
   product,
 }) {
   const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
   const [productCategory, setProductCategory] = useState('lumber');
   const [category, setCategory] = useState('materials');
   const [unit, setUnit] = useState('ea');
   const [unitPrice, setUnitPrice] = useState('');
+  const [url, setUrl] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return null;
+    const date = typeof timestamp === 'number' ? new Date(timestamp) : timestamp.toDate?.() || new Date(timestamp);
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       if (product) {
         setName(product.name || '');
+        setBrand(product.brand || '');
         setProductCategory(product.productCategory || 'lumber');
         setCategory(product.category || 'materials');
         setUnit(product.unit || 'ea');
         setUnitPrice(product.unitPrice?.toString() || '');
+        setUrl(product.url || '');
+        setNotes(product.notes || '');
       } else {
         setName('');
+        setBrand('');
         setProductCategory('lumber');
         setCategory('materials');
         setUnit('ea');
         setUnitPrice('');
+        setUrl('');
+        setNotes('');
       }
     } else {
       document.body.style.overflow = 'unset';
@@ -50,10 +71,13 @@ export function ProductFormModal({
     onSave({
       ...(product || {}),
       name: name.trim(),
+      brand: brand.trim(),
       productCategory,
       category,
       unit,
       unitPrice: parseFloat(unitPrice) || 0,
+      url: url.trim(),
+      notes: notes.trim(),
     });
     onClose();
   };
@@ -82,6 +106,16 @@ export function ProductFormModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., 4x8 Drywall Sheet"
               autoFocus
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="brand">Brand (optional)</Label>
+            <Input
+              id="brand"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="e.g., USG, Behr, Home Depot"
             />
           </div>
 
@@ -140,6 +174,52 @@ export function ProductFormModal({
               />
             </div>
           </div>
+
+          <div>
+            <Label htmlFor="url">Product URL (optional)</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                id="url"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://www.homedepot.com/p/..."
+                className="flex-1"
+              />
+              {url && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center px-3 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes about this product..."
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md min-h-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {product && (product.createdAt || product.updatedAt) && (
+            <div className="p-3 text-sm text-gray-500 rounded-lg bg-gray-50">
+              {product.createdAt && (
+                <div>Created: {formatDate(product.createdAt)}</div>
+              )}
+              {product.updatedAt && (
+                <div>Last updated: {formatDate(product.updatedAt)}</div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
