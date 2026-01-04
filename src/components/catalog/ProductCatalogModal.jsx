@@ -177,6 +177,11 @@ export function ProductCatalogModal({
                           </>
                         )}
                       </div>
+                      {product.notes && (
+                        <div className="mt-1 text-sm text-gray-400 truncate italic">
+                          {product.notes.length > 60 ? product.notes.slice(0, 60) + '...' : product.notes}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <Button
