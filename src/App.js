@@ -4,11 +4,13 @@ import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
-import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, LogIn, LogOut, User } from "lucide-react";
+import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, LogIn, LogOut, User, Package, Calculator } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
 import { EstimatePreviewModal } from "./components/estimator/EstimatePreviewModal";
+import { ProductCatalogModal } from "./components/catalog/ProductCatalogModal";
+import { MaterialCalculatorModal } from "./components/calculators/MaterialCalculatorModal";
 import { uuid, money, calcTotals, sectionSubtotal, csvEscape, safe, sanitizeFilename, parseCsvLine } from "./utils/estimator";
 import { STORAGE_KEY, defaultItem, defaultSection, emptyProject } from "./constants/estimator";
 import { estimatorService } from "./services/estimatorService";
@@ -22,6 +24,8 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [firebaseError, setFirebaseError] = useState(false);
   const [showEstimateModal, setShowEstimateModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [showCalculatorModal, setShowCalculatorModal] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -263,6 +267,49 @@ export default function App() {
     } : p)));
   };
 
+  // Add items from calculator to a section
+  const addCalculatorItems = (items, sectionId) => {
+    setProjects((prev) => prev.map((p) => {
+      if (p.id !== active.id) return p;
+      return {
+        ...p,
+        sections: p.sections.map((s) =>
+          s.id === sectionId
+            ? { ...s, items: [...s.items, ...items] }
+            : s
+        ),
+        updatedAt: Date.now(),
+      };
+    }));
+    setShowCalculatorModal(false);
+  };
+
+  // Add product from catalog to a section
+  const addProductToSection = (product, qty, sectionId) => {
+    const newItem = {
+      id: uuid(),
+      desc: product.name,
+      category: product.category,
+      qty: qty,
+      unit: product.unit,
+      unitCost: product.unitPrice,
+      taxable: true,
+    };
+
+    setProjects((prev) => prev.map((p) => {
+      if (p.id !== active.id) return p;
+      return {
+        ...p,
+        sections: p.sections.map((s) =>
+          s.id === sectionId
+            ? { ...s, items: [...s.items, newItem] }
+            : s
+        ),
+        updatedAt: Date.now(),
+      };
+    }));
+  };
+
   const exportCSV = () => {
 
     const rows = [
@@ -438,6 +485,8 @@ export default function App() {
               <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
             </label>
             <Button onClick={manualSave} variant="secondary" className="gap-2"><Save className="w-4 h-4"/>Save</Button>
+            <Button onClick={() => setShowCatalogModal(true)} variant="secondary" className="gap-2"><Package className="w-4 h-4"/>Catalog</Button>
+            <Button onClick={() => setShowCalculatorModal(true)} variant="secondary" className="gap-2"><Calculator className="w-4 h-4"/>Calculators</Button>
             <Button onClick={createEstimate} variant="outline" className="gap-2 text-gray-900 bg-yellow-400 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500"><FileText className="w-4 h-4"/>Preview Estimate</Button>
             <Button onClick={printPage} variant="outline" className="gap-2"><Printer className="w-4 h-4"/>Print</Button>
 
@@ -640,6 +689,23 @@ export default function App() {
         totals={totals}
         money={money}
         sectionSubtotal={sectionSubtotal}
+      />
+
+      {/* Product Catalog Modal */}
+      <ProductCatalogModal
+        isOpen={showCatalogModal}
+        onClose={() => setShowCatalogModal(false)}
+        userId="default-user"
+        sections={active?.sections || []}
+        onAddToEstimate={addProductToSection}
+      />
+
+      {/* Material Calculator Modal */}
+      <MaterialCalculatorModal
+        isOpen={showCalculatorModal}
+        onClose={() => setShowCalculatorModal(false)}
+        sections={active?.sections || []}
+        onAddItems={addCalculatorItems}
       />
 
       {/* Login Modal */}
