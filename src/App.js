@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Card, CardContent } from "./components/ui/card";
-import { Button } from "./components/ui/button";
-import { Input } from "./components/ui/input";
-import { Label } from "./components/ui/label";
-import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, LogIn, LogOut, User, Package, Calculator } from "lucide-react";
+import { Plus, Trash2, Download, Upload, Printer, Copy, Save, FileText, Package, Calculator, FolderOpen, HardHat } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -452,19 +448,30 @@ export default function App() {
     }
   };
 
+  // Common styles
+  const inputClasses = "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 placeholder:text-slate-400";
+  const labelClasses = "block mb-1.5 text-sm font-medium text-slate-700";
+  const buttonPrimary = "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40";
+  const buttonSecondary = "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500/20 transition-all duration-200";
+  const buttonDanger = "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-xl hover:bg-red-50 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all duration-200";
+
   if (loading) {
     return (
-      <div className="min-h-screen p-4 bg-neutral-50 text-neutral-900 md:p-8">
-        <div className="grid max-w-6xl gap-4 mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 border-b-2 rounded-full animate-spin border-neutral-900"></div>
-              <p className="text-neutral-600">Loading your estimates...</p>
-              {firebaseError && (
-                <Button onClick={retryFirebase} className="mt-4">Retry Firebase</Button>
-              )}
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+        <div className="text-center">
+          <div className="relative">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-6 shadow-xl rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30">
+              <HardHat className="w-8 h-8 text-white animate-pulse" />
             </div>
+            <div className="absolute border-2 -inset-4 rounded-3xl border-amber-500/20 animate-ping" style={{ animationDuration: '2s' }} />
           </div>
+          <p className="font-medium text-slate-600">Loading your estimates...</p>
+          <p className="mt-1 text-sm text-slate-400">Please wait a moment</p>
+          {firebaseError && (
+            <button onClick={retryFirebase} className={`${buttonPrimary} mt-6`}>
+              Retry Connection
+            </button>
+          )}
         </div>
       </div>
     );
@@ -472,212 +479,335 @@ export default function App() {
 
   return (
     <AuthWrapper>
-    <div className="min-h-screen p-4 bg-neutral-50 text-neutral-900 md:p-8">
-      <div className="grid max-w-6xl gap-4 mx-auto">
-      <header className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Contractor Estimate Tool</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={addProject} className="gap-2"><Plus className="w-4 h-4"/>New</Button>
-            <Button onClick={duplicateProject} variant="secondary" className="gap-2"><Copy className="w-4 h-4"/>Duplicate</Button>
-            <Button onClick={deleteProject} variant="destructive" className="gap-2"><Trash2 className="w-4 h-4"/>Delete</Button>
-            <Button onClick={exportCSV} variant="secondary" className="gap-2"><Download className="w-4 h-4"/>CSV</Button>
-            <label className="inline-flex items-center gap-2 px-3 py-2 bg-white border rounded-lg cursor-pointer"><Upload className="w-4 h-4"/> Import CSV
-              <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
-            </label>
-            <Button onClick={manualSave} variant="secondary" className="gap-2"><Save className="w-4 h-4"/>Save</Button>
-            <Button onClick={() => setShowCatalogModal(true)} variant="secondary" className="gap-2"><Package className="w-4 h-4"/>Catalog</Button>
-            <Button onClick={() => setShowCalculatorModal(true)} variant="secondary" className="gap-2"><Calculator className="w-4 h-4"/>Calculators</Button>
-            <Button onClick={createEstimate} variant="outline" className="gap-2 text-gray-900 bg-yellow-400 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500"><FileText className="w-4 h-4"/>Preview Estimate</Button>
-            <Button onClick={printPage} variant="outline" className="gap-2"><Printer className="w-4 h-4"/>Print</Button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+      <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
 
-            {/* Auth Button */}
-            <div className="flex items-center gap-2 pl-2 ml-2 border-l border-neutral-300">
-              {/* This part of the code was removed as per the edit hint. */}
-              {/* The AuthWrapper will handle the login/logout buttons. */}
+        {/* Header */}
+        <header className="mb-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={addProject} className={buttonPrimary}>
+                <Plus className="w-4 h-4"/>New
+              </button>
+              <button onClick={duplicateProject} className={buttonSecondary}>
+                <Copy className="w-4 h-4"/>Duplicate
+              </button>
+              <button onClick={deleteProject} className={buttonDanger}>
+                <Trash2 className="w-4 h-4"/>Delete
+              </button>
+
+              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+              <button onClick={exportCSV} className={buttonSecondary}>
+                <Download className="w-4 h-4"/>CSV
+              </button>
+              <label className={`${buttonSecondary} cursor-pointer`}>
+                <Upload className="w-4 h-4"/> Import
+                <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
+              </label>
+              <button onClick={manualSave} className={buttonSecondary}>
+                <Save className="w-4 h-4"/>Save
+              </button>
+
+              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+              <button onClick={() => setShowCatalogModal(true)} className={buttonSecondary}>
+                <Package className="w-4 h-4"/>Catalog
+              </button>
+              <button onClick={() => setShowCalculatorModal(true)} className={buttonSecondary}>
+                <Calculator className="w-4 h-4"/>Calculators
+              </button>
+
+              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+              <button onClick={createEstimate} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-900 bg-gradient-to-r from-amber-300 to-amber-400 rounded-xl hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-400/25">
+                <FileText className="w-4 h-4"/>Preview
+              </button>
+              <button onClick={printPage} className={buttonSecondary}>
+                <Printer className="w-4 h-4"/>Print
+              </button>
             </div>
           </div>
-      </header>
+        </header>
 
-        {/* project picker + client details */}
-        <Card>
-          <CardContent className="grid gap-4 p-4 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <Label>Project</Label>
-              <div className="flex gap-2 mt-1">
-                <ProjectSelect
-                  value={active.id}
-                  onValueChange={(v) => setActiveId(v)}
-                  projects={projects}
-                />
-                <Button variant="outline" className="gap-2" onClick={() => updateActive({ name: window.prompt("Project name?", active.name) || active.name })}><Save className="w-4 h-4"/>Rename</Button>
-              </div>
-
-              {/* Business Logo Upload */}
-              <div className="mt-4">
-                <Label>Business Logo</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <Upload className="w-4 h-4"/>
-                    Choose Logo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            updateActive({ businessLogo: event.target?.result });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
+        {/* Project & Client Card */}
+        <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+          <div className="p-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Left Column - Project & Logo */}
+              <div className="space-y-5">
+                <div>
+                  <label className={labelClasses}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Project
+                    </span>
                   </label>
-                  {active?.businessLogo && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateActive({ businessLogo: null })}
-                      className="gap-1 text-red-600 hover:text-red-700"
+                  <div className="flex gap-2 mt-1.5">
+                    <ProjectSelect
+                      value={active.id}
+                      onValueChange={(v) => setActiveId(v)}
+                      projects={projects}
+                    />
+                    <button
+                      onClick={() => updateActive({ name: window.prompt("Project name?", active.name) || active.name })}
+                      className={buttonSecondary}
                     >
-                      <Trash2 className="w-3 h-3"/>
-                      Remove
-                    </Button>
+                      <Save className="w-4 h-4"/>Rename
+                    </button>
+                  </div>
+                </div>
+
+                {/* Business Logo */}
+                <div className="p-4 border rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200">
+                  <label className="block mb-2 text-sm font-medium text-slate-700">Business Logo</label>
+                  <div className="flex items-center gap-3">
+                    <label className={`${buttonSecondary} cursor-pointer text-xs px-3 py-2`}>
+                      <Upload className="w-4 h-4"/>
+                      Choose Logo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              updateActive({ businessLogo: event.target?.result });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {active?.businessLogo && (
+                      <button
+                        onClick={() => updateActive({ businessLogo: null })}
+                        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-red-600 transition-colors rounded-lg hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-3 h-3"/>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {active?.businessLogo && (
+                    <div className="mt-3">
+                      <img
+                        src={active.businessLogo}
+                        alt="Business Logo"
+                        className="object-contain h-12 border rounded-lg border-slate-200 max-w-32"
+                      />
+                    </div>
                   )}
                 </div>
-                {active?.businessLogo && (
-                  <div className="mt-2">
-                    <img
-                      src={active.businessLogo}
-                      alt="Business Logo"
-                      className="object-contain h-12 border rounded max-w-32"
+
+                {/* Client Info */}
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="clientName" className={labelClasses}>Client Name</label>
+                    <input
+                      id="clientName"
+                      className={inputClasses}
+                      value={active?.clientName || ""}
+                      onChange={(e)=>updateActive({ clientName:e.target.value })}
+                      placeholder="Enter client name"
                     />
                   </div>
-                )}
+                  <div>
+                    <label htmlFor="clientPhone" className={labelClasses}>Client Phone</label>
+                    <input
+                      id="clientPhone"
+                      className={inputClasses}
+                      type="tel"
+                      placeholder="(555) 555-5555"
+                      value={active?.clientPhone || ""}
+                      onChange={(e)=>updateActive({ clientPhone:e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="clientEmail" className={labelClasses}>Client Email</label>
+                    <input
+                      id="clientEmail"
+                      className={inputClasses}
+                      type="email"
+                      placeholder="name@example.com"
+                      value={active?.clientEmail || ""}
+                      onChange={(e)=>updateActive({ clientEmail:e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* stacked client info */}
-              <div className="grid gap-3 mt-4">
+              {/* Right Column - Date & Estimate Number */}
+              <div className="space-y-5">
                 <div>
-                  <Label>Client Name</Label>
-                  <Input className="mt-1" value={active?.clientName || ""} onChange={(e)=>updateActive({ clientName:e.target.value })}/>
+                  <label htmlFor="estimateDate" className={labelClasses}>Estimate Date</label>
+                  <input
+                    id="estimateDate"
+                    className={inputClasses}
+                    type="date"
+                    value={active?.estimateDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => updateActive({ estimateDate: e.target.value })}
+                  />
                 </div>
                 <div>
-                  <Label>Client Phone #</Label>
-                  <Input className="mt-1" type="tel" placeholder="(555) 555-5555" value={active?.clientPhone || ""} onChange={(e)=>updateActive({ clientPhone:e.target.value })}/>
-                </div>
-                <div>
-                  <Label>Client Email</Label>
-                  <Input className="mt-1" type="email" placeholder="name@example.com" value={active?.clientEmail || ""} onChange={(e)=>updateActive({ clientEmail:e.target.value })}/>
+                  <label htmlFor="estimateNumber" className={labelClasses}>Estimate Number</label>
+                  <input
+                    id="estimateNumber"
+                    className={inputClasses}
+                    type="text"
+                    placeholder="#001"
+                    value={active?.estimateNumber || "#001"}
+                    onChange={(e) => updateActive({ estimateNumber: e.target.value })}
+                  />
                 </div>
               </div>
             </div>
-
-            {/* right side - date input */}
-            <div className="md:col-span-2">
-              <Label>Estimate Date</Label>
-                <Input
-                  className="mt-1"
-                  type="date"
-                  value={active?.estimateDate || new Date().toISOString().split('T')[0]}
-                  onChange={(e) => updateActive({ estimateDate: e.target.value })}
-                />
-                    {/* Add Estimate Number field */}
-              <div className="mt-4">
-                <Label>Estimate Number</Label>
-                <Input
-                  className="mt-1"
-                  type="text"
-                  placeholder="#001"
-                  value={active?.estimateNumber || "#001"}
-                  onChange={(e) => updateActive({ estimateNumber: e.target.value })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SECTIONS — stacked cards */}
-        <div className="flex items-center justify-between">
-          <div className="text-base font-semibold">Sections</div>
-          <div className="flex gap-2">
-            <Button className="gap-2" onClick={addSection}><Plus className="w-4 h-4"/>Add Section</Button>
           </div>
         </div>
 
-        {(active?.sections || []).map((sec, idx) => (
-          <SectionCard
-            key={sec.id}
-            section={sec}
-            sectionIndex={idx}
-            onRename={renameSection}
-            onDuplicate={duplicateSection}
-            onRemove={removeSection}
-            onAddItem={addItem}
-            onRemoveItem={removeItem}
-            onUpdateItem={updateItem}
-            onUpdateSection={(sectionId, patch) => {
-              const updatedSections = active.sections.map(s =>
-                s.id === sectionId ? { ...s, ...patch } : s
-              );
-              updateActive({ sections: updatedSections });
-            }}
-            onReorder={reorderSection}
-            money={money}
-          />
-        ))}
+        {/* Sections Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-800">Sections</h2>
+          <button className={buttonPrimary} onClick={addSection}>
+            <Plus className="w-4 h-4"/>Add Section
+          </button>
+        </div>
 
-        {/* rates & summary */}
-        <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2">
-          <Card>
-            <CardContent className="grid grid-cols-2 gap-4 p-4">
-              <div className="col-span-2 text-base font-semibold">Rates & Markups</div>
-              <div>
-                <Label>Sales Tax %</Label>
-                <Input className="mt-1" type="number" inputMode="decimal" value={active.rates.taxPct} onChange={(e)=>updateActive({ rates: { ...active.rates, taxPct: Number(e.target.value) } })}/>
-              </div>
-              <div>
-                <Label>Overhead %</Label>
-                <Input className="mt-1" type="number" inputMode="decimal" value={active.rates.overheadPct} onChange={(e)=>updateActive({ rates: { ...active.rates, overheadPct: Number(e.target.value) } })}/>
-              </div>
-              <div>
-                <Label>Profit %</Label>
-                <Input className="mt-1" type="number" inputMode="decimal" value={active.rates.profitPct} onChange={(e)=>updateActive({ rates: { ...active.rates, profitPct: Number(e.target.value) } })}/>
-              </div>
-              <div>
-                <Label>Contingency %</Label>
-                <Input className="mt-1" type="number" inputMode="decimal" value={active.rates.contingencyPct} onChange={(e)=>updateActive({ rates: { ...active.rates, contingencyPct: Number(e.target.value) } })}/>
-              </div>
-              <div className="col-span-2">
-                <Label>Notes (prints on estimate)</Label>
-                <textarea className="w-full p-2 mt-1 border rounded-lg min-h-24" value={active.notes} onChange={(e)=>updateActive({ notes: e.target.value })} />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Sections */}
+        <div className="mb-6 space-y-4">
+          {(active?.sections || []).map((sec, idx) => (
+            <SectionCard
+              key={sec.id}
+              section={sec}
+              sectionIndex={idx}
+              onRename={renameSection}
+              onDuplicate={duplicateSection}
+              onRemove={removeSection}
+              onAddItem={addItem}
+              onRemoveItem={removeItem}
+              onUpdateItem={updateItem}
+              onUpdateSection={(sectionId, patch) => {
+                const updatedSections = active.sections.map(s =>
+                  s.id === sectionId ? { ...s, ...patch } : s
+                );
+                updateActive({ sections: updatedSections });
+              }}
+              onReorder={reorderSection}
+              money={money}
+            />
+          ))}
+        </div>
 
-          <Card>
-            <CardContent className="grid gap-2 p-4">
-              <div className="text-base font-semibold">Summary</div>
+        {/* Rates & Summary */}
+        <div className="grid gap-6 mb-8 md:grid-cols-2 print:grid-cols-2">
+          {/* Rates Card */}
+          <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <h3 className="text-base font-semibold text-slate-800">Rates & Markups</h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="taxPct" className={labelClasses}>Sales Tax %</label>
+                  <input
+                    id="taxPct"
+                    className={inputClasses}
+                    type="number"
+                    inputMode="decimal"
+                    value={active.rates.taxPct}
+                    onChange={(e)=>updateActive({ rates: { ...active.rates, taxPct: Number(e.target.value) } })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="overheadPct" className={labelClasses}>Overhead %</label>
+                  <input
+                    id="overheadPct"
+                    className={inputClasses}
+                    type="number"
+                    inputMode="decimal"
+                    value={active.rates.overheadPct}
+                    onChange={(e)=>updateActive({ rates: { ...active.rates, overheadPct: Number(e.target.value) } })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="profitPct" className={labelClasses}>Profit %</label>
+                  <input
+                    id="profitPct"
+                    className={inputClasses}
+                    type="number"
+                    inputMode="decimal"
+                    value={active.rates.profitPct}
+                    onChange={(e)=>updateActive({ rates: { ...active.rates, profitPct: Number(e.target.value) } })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contingencyPct" className={labelClasses}>Contingency %</label>
+                  <input
+                    id="contingencyPct"
+                    className={inputClasses}
+                    type="number"
+                    inputMode="decimal"
+                    value={active.rates.contingencyPct}
+                    onChange={(e)=>updateActive({ rates: { ...active.rates, contingencyPct: Number(e.target.value) } })}
+                  />
+                </div>
+              </div>
+              <div className="mt-5">
+                <label htmlFor="notes" className={labelClasses}>Notes (prints on estimate)</label>
+                <textarea
+                  id="notes"
+                  className={`${inputClasses} min-h-24 resize-none`}
+                  value={active.notes}
+                  onChange={(e)=>updateActive({ notes: e.target.value })}
+                  placeholder="Add any notes or terms..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Summary Card */}
+          <div className="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <h3 className="text-base font-semibold text-slate-800">Summary</h3>
+            </div>
+            <div className="p-6 space-y-2">
               <SummaryRow label="Materials" value={money(totals.byCategory.materials || 0)} />
               <SummaryRow label="Labor" value={money(totals.byCategory.labor || 0)} />
               <SummaryRow label="Subcontract" value={money(totals.byCategory.subcontract || 0)} />
               <SummaryRow label="Other" value={money(totals.byCategory.other || 0)} />
-              <div className="h-px my-2 bg-neutral-200"/>
+
+              <div className="h-px my-3 bg-slate-200"/>
+
               <SummaryRow label="SUBTOTAL" value={money(totals.subtotal)} strong />
               <SummaryRow label={`Sales Tax (${active.rates.taxPct||0}%)`} value={money(totals.tax)} />
               <SummaryRow label={`Overhead (${active.rates.overheadPct||0}%)`} value={money(totals.overhead)} />
               <SummaryRow label={`Profit (${active.rates.profitPct||0}%)`} value={money(totals.profit)} />
               <SummaryRow label={`Contingency (${active.rates.contingencyPct||0}%)`} value={money(totals.contingency)} />
-              <div className="h-px my-2 bg-neutral-200"/>
-              <SummaryRow label="TOTAL" value={money(totals.total)} strong large />
-            </CardContent>
-          </Card>
+
+              <div className="h-px my-3 bg-slate-200"/>
+
+              <div className="p-4 -mx-2 border rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-amber-800">TOTAL</span>
+                  <span className="text-2xl font-bold text-amber-700">{money(totals.total)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <footer className="py-6 text-xs text-center text-neutral-500 print:hidden">
-          Auto-saved to your browser. Export CSV for backup. — © {new Date().getFullYear()} Simple Estimator
+        {/* Footer */}
+        <footer className="py-6 text-center print:hidden">
+          <p className="text-xs text-slate-400">
+            Auto-saved to your browser. Export CSV for backup.
+          </p>
+          <p className="mt-1 text-xs text-slate-300">
+            © {new Date().getFullYear()} Contractor Estimate Tool
+          </p>
         </footer>
       </div>
 
@@ -710,15 +840,14 @@ export default function App() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+          <div className="relative p-6 bg-white shadow-2xl rounded-2xl">
             <button
               onClick={() => setShowLoginModal(false)}
-              className="absolute z-10 p-1 top-2 right-2 text-neutral-500 hover:text-neutral-700"
+              className="absolute p-2 transition-colors rounded-full top-2 right-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
             >
               ✕
             </button>
-            {/* This part of the code was removed as per the edit hint. */}
             {/* The AuthWrapper will handle the login page. */}
           </div>
         </div>
@@ -738,15 +867,3 @@ export default function App() {
     </AuthWrapper>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
