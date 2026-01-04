@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
+import { Ruler, Percent, DollarSign, Layers, Plus } from 'lucide-react';
 import { calculateDrywall } from '../../utils/calculators';
 import { uuid, money } from '../../utils/estimator';
 
@@ -14,6 +12,9 @@ export function DrywallCalculator({ sections, onAddItems }) {
   const [sheetPrice, setSheetPrice] = useState('15');
   const [targetSection, setTargetSection] = useState(sections[0]?.id || '');
   const [results, setResults] = useState(null);
+
+  const inputClasses = "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 placeholder:text-slate-400";
+  const labelClasses = "block mb-1.5 text-sm font-medium text-slate-700";
 
   const calculate = () => {
     const l = parseFloat(length) || 0;
@@ -56,53 +57,73 @@ export function DrywallCalculator({ sections, onAddItems }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-slate-500">
         Calculate how many 4x8 drywall sheets you need for a room.
       </p>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="dw-length">Room Length (ft)</Label>
-          <Input
-            id="dw-length"
-            type="number"
-            step="any"
-            min="0"
-            value={length}
-            onChange={(e) => setLength(e.target.value)}
-            placeholder="12"
-          />
+      {/* Room Dimensions */}
+      <div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Ruler className="w-4 h-4 text-slate-600" />
+          <span className="text-sm font-medium text-slate-700">Room Dimensions</span>
         </div>
-        <div>
-          <Label htmlFor="dw-width">Room Width (ft)</Label>
-          <Input
-            id="dw-width"
-            type="number"
-            step="any"
-            min="0"
-            value={width}
-            onChange={(e) => setWidth(e.target.value)}
-            placeholder="10"
-          />
-        </div>
-        <div>
-          <Label htmlFor="dw-height">Wall Height (ft)</Label>
-          <Input
-            id="dw-height"
-            type="number"
-            step="any"
-            min="0"
-            value={height}
-            onChange={(e) => setHeight(e.target.value)}
-            placeholder="8"
-          />
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="dw-length" className={labelClasses}>
+              Length (ft)
+            </label>
+            <input
+              id="dw-length"
+              type="number"
+              step="any"
+              min="0"
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+              placeholder="12"
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label htmlFor="dw-width" className={labelClasses}>
+              Width (ft)
+            </label>
+            <input
+              id="dw-width"
+              type="number"
+              step="any"
+              min="0"
+              value={width}
+              onChange={(e) => setWidth(e.target.value)}
+              placeholder="10"
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label htmlFor="dw-height" className={labelClasses}>
+              Wall Height (ft)
+            </label>
+            <input
+              id="dw-height"
+              type="number"
+              step="any"
+              min="0"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              placeholder="8"
+              className={inputClasses}
+            />
+          </div>
         </div>
       </div>
 
+      {/* Options */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="dw-waste">Waste Factor (%)</Label>
-          <Input
+        <div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Percent className="w-4 h-4 text-slate-600" />
+            <span className="text-sm font-medium text-slate-700">Waste Factor</span>
+          </div>
+          <input
             id="dw-waste"
             type="number"
             step="1"
@@ -110,75 +131,108 @@ export function DrywallCalculator({ sections, onAddItems }) {
             max="50"
             value={wasteFactor}
             onChange={(e) => setWasteFactor(e.target.value)}
+            className={inputClasses}
           />
+          <p className="mt-1.5 text-xs text-slate-400">Recommended: 10-15%</p>
         </div>
-        <div>
-          <Label htmlFor="dw-price">Price per Sheet ($)</Label>
-          <Input
+        <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50/80 to-orange-50/50 border border-amber-100">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-800">Price per Sheet</span>
+          </div>
+          <input
             id="dw-price"
             type="number"
             step="0.01"
             min="0"
             value={sheetPrice}
             onChange={(e) => setSheetPrice(e.target.value)}
+            className="w-full px-4 py-2.5 text-sm bg-white border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Include Ceiling */}
+      <label className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
         <input
           id="dw-ceiling"
           type="checkbox"
           checked={includeCeiling}
           onChange={(e) => setIncludeCeiling(e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="w-5 h-5 text-amber-600 border-slate-300 rounded focus:ring-amber-500 focus:ring-offset-0"
         />
-        <Label htmlFor="dw-ceiling" className="cursor-pointer">Include Ceiling</Label>
-      </div>
+        <div>
+          <span className="text-sm font-medium text-slate-700">Include Ceiling</span>
+          <p className="text-xs text-slate-400">Add ceiling area to calculation</p>
+        </div>
+      </label>
 
-      <Button onClick={calculate} disabled={!length || !width}>
-        Calculate
-      </Button>
+      {/* Calculate Button */}
+      <button
+        onClick={calculate}
+        disabled={!length || !width}
+        className="w-full px-5 py-3 text-sm font-medium text-white bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl hover:from-slate-800 hover:to-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all duration-200 shadow-lg shadow-slate-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+      >
+        Calculate Sheets Needed
+      </button>
 
+      {/* Results */}
       {results && (
-        <div className="p-4 mt-4 space-y-3 rounded-lg bg-blue-50">
-          <h4 className="font-semibold text-gray-900">Results</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Wall Area:</div>
-            <div className="font-medium">{results.wallArea.toFixed(1)} sq ft</div>
-            {includeCeiling && (
-              <>
-                <div>Ceiling Area:</div>
-                <div className="font-medium">{results.ceilingArea.toFixed(1)} sq ft</div>
-              </>
-            )}
-            <div>Waste Factor:</div>
-            <div className="font-medium">{wasteFactor}%</div>
-          </div>
-          <div className="pt-2 border-t border-blue-200">
-            <div className="text-lg font-bold text-gray-900">
-              Sheets Needed: {sheets}
+        <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 space-y-4">
+          <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            Results
+          </h4>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="p-3 rounded-lg bg-white/60">
+              <div className="text-slate-500 text-xs mb-1">Wall Area</div>
+              <div className="font-semibold text-slate-800">{results.wallArea.toFixed(1)} sq ft</div>
             </div>
-            <div className="text-sm text-gray-600">
-              Estimated Cost: {money(totalCost)}
+            {includeCeiling && (
+              <div className="p-3 rounded-lg bg-white/60">
+                <div className="text-slate-500 text-xs mb-1">Ceiling Area</div>
+                <div className="font-semibold text-slate-800">{results.ceilingArea.toFixed(1)} sq ft</div>
+              </div>
+            )}
+            <div className="p-3 rounded-lg bg-white/60">
+              <div className="text-slate-500 text-xs mb-1">Waste Factor</div>
+              <div className="font-semibold text-slate-800">{wasteFactor}%</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-3">
-            <Label htmlFor="dw-section">Add to:</Label>
-            <select
-              id="dw-section"
-              value={targetSection}
-              onChange={(e) => setTargetSection(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="pt-4 border-t border-amber-200">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-amber-800">Sheets Needed</span>
+              <span className="text-2xl font-bold text-amber-700">{sheets}</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-sm text-amber-800">Estimated Cost</span>
+              <span className="text-lg font-semibold text-amber-600">{money(totalCost)}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-4 border-t border-amber-200">
+            <div className="flex items-center gap-2 flex-1">
+              <Layers className="w-4 h-4 text-slate-400" />
+              <select
+                id="dw-section"
+                value={targetSection}
+                onChange={(e) => setTargetSection(e.target.value)}
+                className={`${inputClasses} flex-1`}
+              >
+                {sections.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={addToEstimate}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-500/25"
             >
-              {sections.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <Button onClick={addToEstimate}>
+              <Plus className="w-4 h-4" />
               Add to Estimate
-            </Button>
+            </button>
           </div>
         </div>
       )}
