@@ -73,9 +73,11 @@ export function ProductCatalogModal({
   };
 
   const filteredProducts = products.filter((p) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.productCategory?.toLowerCase().includes(searchTerm.toLowerCase());
+      p.name?.toLowerCase().includes(term) ||
+      p.brand?.toLowerCase().includes(term) ||
+      p.productCategory?.toLowerCase().includes(term);
     const matchesCategory =
       categoryFilter === 'all' || p.productCategory === categoryFilter;
     return matchesSearch && matchesCategory;
