@@ -480,58 +480,53 @@ export default function App() {
   return (
     <AuthWrapper>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
-      <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
 
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* Sticky Toolbar */}
+      <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm print:hidden">
+        <div className="px-4 py-3 mx-auto max-w-6xl md:px-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={addProject} className={buttonPrimary}>
+              <Plus className="w-4 h-4"/>New
+            </button>
+            <button onClick={deleteProject} className={buttonDanger}>
+              <Trash2 className="w-4 h-4"/>Delete
+            </button>
 
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={addProject} className={buttonPrimary}>
-                <Plus className="w-4 h-4"/>New
-              </button>
-              <button onClick={duplicateProject} className={buttonSecondary}>
-                <Copy className="w-4 h-4"/>Duplicate
-              </button>
-              <button onClick={deleteProject} className={buttonDanger}>
-                <Trash2 className="w-4 h-4"/>Delete
-              </button>
+            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+            <button onClick={exportCSV} className={buttonSecondary}>
+              <Download className="w-4 h-4"/>CSV
+            </button>
+            <label className={`${buttonSecondary} cursor-pointer`}>
+              <Upload className="w-4 h-4"/> Import
+              <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
+            </label>
+            <button onClick={manualSave} className={buttonSecondary}>
+              <Save className="w-4 h-4"/>Save
+            </button>
 
-              <button onClick={exportCSV} className={buttonSecondary}>
-                <Download className="w-4 h-4"/>CSV
-              </button>
-              <label className={`${buttonSecondary} cursor-pointer`}>
-                <Upload className="w-4 h-4"/> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e)=> e.target.files?.[0] && importCSV(e.target.files[0])}/>
-              </label>
-              <button onClick={manualSave} className={buttonSecondary}>
-                <Save className="w-4 h-4"/>Save
-              </button>
+            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+            <button onClick={() => setShowCatalogModal(true)} className={buttonSecondary}>
+              <Package className="w-4 h-4"/>Catalog
+            </button>
+            <button onClick={() => setShowCalculatorModal(true)} className={buttonSecondary}>
+              <Calculator className="w-4 h-4"/>Calculators
+            </button>
 
-              <button onClick={() => setShowCatalogModal(true)} className={buttonSecondary}>
-                <Package className="w-4 h-4"/>Catalog
-              </button>
-              <button onClick={() => setShowCalculatorModal(true)} className={buttonSecondary}>
-                <Calculator className="w-4 h-4"/>Calculators
-              </button>
+            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-              <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
-
-              <button onClick={createEstimate} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-900 bg-gradient-to-r from-amber-300 to-amber-400 rounded-xl hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-400/25">
-                <FileText className="w-4 h-4"/>Preview
-              </button>
-              <button onClick={printPage} className={buttonSecondary}>
-                <Printer className="w-4 h-4"/>Print
-              </button>
-            </div>
+            <button onClick={createEstimate} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-900 bg-gradient-to-r from-amber-300 to-amber-400 rounded-xl hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-400/25">
+              <FileText className="w-4 h-4"/>Preview
+            </button>
+            <button onClick={printPage} className={buttonSecondary}>
+              <Printer className="w-4 h-4"/>Print
+            </button>
           </div>
-        </header>
+        </div>
+      </div>
 
+      <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
         {/* Project & Client Card */}
         <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
           <div className="p-6">
