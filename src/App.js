@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X, Building2, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
 import { EstimatePreviewModal } from "./components/estimator/EstimatePreviewModal";
 import { ProductCatalogModal } from "./components/catalog/ProductCatalogModal";
 import { MaterialCalculatorModal } from "./components/calculators/MaterialCalculatorModal";
+import { CompanySettingsModal } from "./components/settings/CompanySettingsModal";
 import { uuid, money, calcTotals, sectionSubtotal } from "./utils/estimator";
 import { STORAGE_KEY, defaultItem, emptyProject } from "./constants/estimator";
 import { estimatorService } from "./services/estimatorService";
+
+const COMPANY_SETTINGS_KEY = "contractor-estimator-company";
 
 // ----------------------------
 // main component
@@ -25,8 +28,39 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [editingProjectName, setEditingProjectName] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [companySettings, setCompanySettings] = useState({
+    companyLogo: '',
+    companyName: '',
+    companyAddress: '',
+    companyPhone: '',
+    companyEmail: '',
+  });
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
+
+  // Load company settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COMPANY_SETTINGS_KEY);
+      if (saved) {
+        setCompanySettings(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.warn('Failed to load company settings:', error);
+    }
+  }, []);
+
+  // Save company settings
+  const saveCompanySettings = (settings) => {
+    setCompanySettings(settings);
+    try {
+      localStorage.setItem(COMPANY_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Failed to save company settings:', error);
+    }
+  };
 
 
   const loadProjects = async () => {
@@ -167,12 +201,27 @@ export default function App() {
     setActiveId(p.id);
   };
 
-  const deleteProject = () => {
+  const deleteProject = async () => {
     if (!window.confirm("Delete this project? This cannot be undone.")) return;
-    const idx = projects.findIndex((p) => p.id === active.id);
-    const next = projects.filter((p) => p.id !== active.id);
+    const projectId = active.id;
+    const idx = projects.findIndex((p) => p.id === projectId);
+    const next = projects.filter((p) => p.id !== projectId);
     setProjects(next);
     setActiveId(next[Math.max(0, idx - 1)]?.id);
+
+    // Delete from Firebase
+    try {
+      await estimatorService.deleteEstimate(projectId);
+    } catch (error) {
+      console.error('Failed to delete project from Firebase:', error);
+    }
+
+    // Also update localStorage
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (error) {
+      console.error('Failed to update localStorage:', error);
+    }
   };
 
   // ----------------------------
@@ -181,13 +230,6 @@ export default function App() {
   const addSection = () => {
     const name = window.prompt("Section name?", `Section ${active.sections.length + 1}`) || `Section ${active.sections.length + 1}`;
     updateActive({ sections: [...active.sections, { id: uuid(), name, items: [defaultItem()] }] });
-  };
-
-  const renameSection = (sectionId) => {
-    const s = active.sections.find((x) => x.id === sectionId);
-    const name = window.prompt("Rename section", s?.name || "Section");
-    if (!name) return;
-    updateActive({ sections: active.sections.map((sec) => (sec.id === sectionId ? { ...sec, name } : sec)) });
   };
 
   const removeSection = (sectionId) => {
@@ -376,54 +418,100 @@ export default function App() {
   return (
     <AuthWrapper>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 bg-white border-r border-slate-200 min-h-screen sticky top-0 transition-all duration-300 print:hidden`}>
+          <div className="flex flex-col h-screen">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              {!sidebarCollapsed && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                    <HardHat className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-semibold text-slate-800">Estimator</span>
+                </div>
+              )}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              </button>
+            </div>
 
-      {/* Sticky Toolbar */}
-      <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm print:hidden">
-        <div className="px-4 py-3 mx-auto max-w-6xl md:px-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <ProjectSelect
-              value={active.id}
-              onValueChange={(v) => setActiveId(v)}
-              projects={projects}
-            />
+            {/* Sidebar Navigation */}
+            <nav className="flex-1 p-3 space-y-1">
+              <button
+                onClick={() => setShowCompanyModal(true)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title="Company Settings"
+              >
+                <Building2 className="w-5 h-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span className="text-sm font-medium">Company Settings</span>}
+              </button>
+            </nav>
 
-            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
-
-            <button onClick={addProject} className={buttonPrimary}>
-              <Plus className="w-4 h-4"/>New
-            </button>
-            <button onClick={deleteProject} className={buttonDanger}>
-              <Trash2 className="w-4 h-4"/>Delete
-            </button>
-
-            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
-
-            <button onClick={manualSave} className={buttonSecondary}>
-              <Save className="w-4 h-4"/>Save
-            </button>
-
-            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
-
-            <button onClick={() => setShowCatalogModal(true)} className={buttonSecondary}>
-              <Package className="w-4 h-4"/>Catalog
-            </button>
-            <button onClick={() => setShowCalculatorModal(true)} className={buttonSecondary}>
-              <Calculator className="w-4 h-4"/>Calculators
-            </button>
-
-            <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
-
-            <button onClick={createEstimate} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-900 bg-gradient-to-r from-amber-300 to-amber-400 rounded-xl hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-400/25">
-              <FileText className="w-4 h-4"/>Preview
-            </button>
-            <button onClick={printPage} className={buttonSecondary}>
-              <Printer className="w-4 h-4"/>Print
-            </button>
+            {/* Sidebar Footer */}
+            {!sidebarCollapsed && (
+              <div className="p-4 border-t border-slate-100">
+                <p className="text-xs text-slate-400 text-center">
+                  © {new Date().getFullYear()} Contractor Estimator
+                </p>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        </aside>
 
-      <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {/* Sticky Toolbar */}
+          <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm print:hidden">
+            <div className="px-4 py-3 mx-auto max-w-6xl md:px-8">
+              <div className="flex flex-wrap items-center gap-2">
+                <ProjectSelect
+                  value={active.id}
+                  onValueChange={(v) => setActiveId(v)}
+                  projects={projects}
+                />
+
+                <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+                <button onClick={addProject} className={buttonPrimary}>
+                  <Plus className="w-4 h-4"/>New
+                </button>
+                <button onClick={deleteProject} className={buttonDanger}>
+                  <Trash2 className="w-4 h-4"/>Delete
+                </button>
+
+                <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+                <button onClick={manualSave} className={buttonSecondary}>
+                  <Save className="w-4 h-4"/>Save
+                </button>
+
+                <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+                <button onClick={() => setShowCatalogModal(true)} className={buttonSecondary}>
+                  <Package className="w-4 h-4"/>Catalog
+                </button>
+                <button onClick={() => setShowCalculatorModal(true)} className={buttonSecondary}>
+                  <Calculator className="w-4 h-4"/>Calculators
+                </button>
+
+                <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
+
+                <button onClick={createEstimate} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-900 bg-gradient-to-r from-amber-300 to-amber-400 rounded-xl hover:from-amber-400 hover:to-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-400/25">
+                  <FileText className="w-4 h-4"/>Preview
+                </button>
+                <button onClick={printPage} className={buttonSecondary}>
+                  <Printer className="w-4 h-4"/>Print
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
         {/* Project Name */}
         <div className="flex items-center gap-3 mb-6">
           {editingProjectName ? (
@@ -461,54 +549,62 @@ export default function App() {
           )}
         </div>
 
-        {/* Client Card */}
+        {/* Client & Estimate Info Card */}
         <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
           <div className="p-6">
             <div className="grid gap-6 md:grid-cols-2">
               {/* Left Column - Client Info */}
-              <div className="space-y-5">
-                {/* Client Info */}
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="clientName" className={labelClasses}>Client Name</label>
-                    <input
-                      id="clientName"
-                      className={inputClasses}
-                      value={active?.clientName || ""}
-                      onChange={(e)=>updateActive({ clientName:e.target.value })}
-                      placeholder="Enter client name"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="clientPhone" className={labelClasses}>Client Phone</label>
-                    <input
-                      id="clientPhone"
-                      className={inputClasses}
-                      type="tel"
-                      placeholder="(555) 555-5555"
-                      value={active?.clientPhone || ""}
-                      onChange={(e) => updateActive({ clientPhone: formatPhoneNumber(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="clientEmail" className={labelClasses}>Client Email</label>
-                    <input
-                      id="clientEmail"
-                      className={`${inputClasses} ${active?.clientEmail && !isValidEmail(active.clientEmail) ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''}`}
-                      type="email"
-                      placeholder="name@example.com"
-                      value={active?.clientEmail || ""}
-                      onChange={(e)=>updateActive({ clientEmail:e.target.value })}
-                    />
-                    {active?.clientEmail && !isValidEmail(active.clientEmail) && (
-                      <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
-                    )}
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="clientName" className={labelClasses}>Client Name</label>
+                  <input
+                    id="clientName"
+                    className={inputClasses}
+                    value={active?.clientName || ""}
+                    onChange={(e)=>updateActive({ clientName:e.target.value })}
+                    placeholder="Enter client name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="clientPhone" className={labelClasses}>Client Phone</label>
+                  <input
+                    id="clientPhone"
+                    className={inputClasses}
+                    type="tel"
+                    placeholder="(555) 555-5555"
+                    value={active?.clientPhone || ""}
+                    onChange={(e) => updateActive({ clientPhone: formatPhoneNumber(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="clientEmail" className={labelClasses}>Client Email</label>
+                  <input
+                    id="clientEmail"
+                    className={`${inputClasses} ${active?.clientEmail && !isValidEmail(active.clientEmail) ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                    type="email"
+                    placeholder="name@example.com"
+                    value={active?.clientEmail || ""}
+                    onChange={(e)=>updateActive({ clientEmail:e.target.value })}
+                  />
+                  {active?.clientEmail && !isValidEmail(active.clientEmail) && (
+                    <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
+                  )}
                 </div>
               </div>
 
-              {/* Right Column - Date & Estimate Number */}
-              <div className="space-y-5">
+              {/* Right Column - Estimate Details */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="estimateNumber" className={labelClasses}>Estimate #</label>
+                  <input
+                    id="estimateNumber"
+                    className={inputClasses}
+                    type="text"
+                    placeholder="#001"
+                    value={active?.estimateNumber || "#001"}
+                    onChange={(e) => updateActive({ estimateNumber: e.target.value })}
+                  />
+                </div>
                 <div>
                   <label htmlFor="estimateDate" className={labelClasses}>Estimate Date</label>
                   <input
@@ -517,17 +613,6 @@ export default function App() {
                     type="date"
                     value={active?.estimateDate || new Date().toISOString().split('T')[0]}
                     onChange={(e) => updateActive({ estimateDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="estimateNumber" className={labelClasses}>Estimate Number</label>
-                  <input
-                    id="estimateNumber"
-                    className={inputClasses}
-                    type="text"
-                    placeholder="#001"
-                    value={active?.estimateNumber || "#001"}
-                    onChange={(e) => updateActive({ estimateNumber: e.target.value })}
                   />
                 </div>
               </div>
@@ -550,7 +635,6 @@ export default function App() {
               key={sec.id}
               section={sec}
               sectionIndex={idx}
-              onRename={renameSection}
               onRemove={removeSection}
               onAddItem={addItem}
               onRemoveItem={removeItem}
@@ -665,15 +749,14 @@ export default function App() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="py-6 text-center print:hidden">
-          <p className="text-xs text-slate-400">
-            Auto-saved to your browser.
-          </p>
-          <p className="mt-1 text-xs text-slate-300">
-            © {new Date().getFullYear()} Contractor Estimate Tool
-          </p>
-        </footer>
+          {/* Footer */}
+          <footer className="py-6 text-center print:hidden">
+            <p className="text-xs text-slate-400">
+              Auto-saved to your browser.
+            </p>
+          </footer>
+          </div>
+        </div>
       </div>
 
       {/* Estimate Preview Modal */}
@@ -681,6 +764,7 @@ export default function App() {
         isOpen={showEstimateModal}
         onClose={() => setShowEstimateModal(false)}
         project={active}
+        companySettings={companySettings}
         totals={totals}
         money={money}
         sectionSubtotal={sectionSubtotal}
@@ -701,6 +785,14 @@ export default function App() {
         onClose={() => setShowCalculatorModal(false)}
         sections={active?.sections || []}
         onAddItems={addCalculatorItems}
+      />
+
+      {/* Company Settings Modal */}
+      <CompanySettingsModal
+        isOpen={showCompanyModal}
+        onClose={() => setShowCompanyModal(false)}
+        companySettings={companySettings}
+        onSave={saveCompanySettings}
       />
 
       {/* Login Modal */}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Trash2, GripVertical, FileText, Edit3 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, GripVertical, FileText, Pencil, Check } from 'lucide-react';
 import { CategorySelect } from './CategorySelect';
 import { CurrencyInput } from './CurrencyInput';
 import { QtyInput } from './QtyInput';
@@ -7,7 +7,6 @@ import { QtyInput } from './QtyInput';
 export function SectionCard({
   section,
   sectionIndex,
-  onRename,
   onRemove,
   onAddItem,
   onRemoveItem,
@@ -16,6 +15,8 @@ export function SectionCard({
   onReorder,
   money
 }) {
+  const [editingName, setEditingName] = useState(false);
+
   const sectionSubtotal = (section) => (section.items || []).reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.unitCost || 0), 0);
 
   const handleDragStart = (e) => {
@@ -37,7 +38,6 @@ export function SectionCard({
   };
 
   const inputClasses = "w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 placeholder:text-slate-400";
-  const buttonSecondary = "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500/20 transition-all duration-200";
   const buttonDanger = "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all duration-200";
   const buttonPrimary = "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-sm shadow-amber-500/20";
 
@@ -56,14 +56,43 @@ export function SectionCard({
             <GripVertical className="w-4 h-4" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800">{section.name}</span>
+            {editingName ? (
+              <>
+                <input
+                  type="text"
+                  autoFocus
+                  className="font-semibold text-slate-800 bg-transparent border-b-2 border-amber-500 focus:outline-none px-1"
+                  value={section.name}
+                  onChange={(e) => onUpdateSection(section.id, { name: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setEditingName(false);
+                    if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  onBlur={() => setEditingName(false)}
+                />
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
+                  title="Save"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-slate-800">{section.name}</span>
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                  title="Edit section name"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
-          <button className={buttonSecondary} onClick={() => onRename(section.id)}>
-            <Edit3 className="h-3.5 w-3.5" />
-            Rename
-          </button>
           <button className={buttonDanger} onClick={() => onRemove(section.id)}>
             <Trash2 className="h-3.5 w-3.5" />
             Delete

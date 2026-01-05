@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Download, Loader2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, sectionSubtotal }) {
+export function EstimatePreviewModal({ isOpen, onClose, project, companySettings, totals, money, sectionSubtotal }) {
   const contentRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -107,19 +107,44 @@ export function EstimatePreviewModal({ isOpen, onClose, project, totals, money, 
             {/* Header */}
             <div className="px-10 py-6 text-white bg-slate-800">
               <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-lg font-bold tracking-wide">ESTIMATE</h1>
-                  <p className="text-sm text-slate-400">{project?.estimateNumber || '#001'}</p>
+                <div className="flex items-center gap-4">
+                  {companySettings?.companyLogo && (
+                    <img
+                      src={companySettings.companyLogo}
+                      alt="Company logo"
+                      className="h-14 w-auto object-contain bg-white rounded p-1"
+                    />
+                  )}
+                  <div>
+                    {companySettings?.companyName && (
+                      <h1 className="text-lg font-bold tracking-wide">{companySettings.companyName}</h1>
+                    )}
+                    {companySettings?.companyAddress && (
+                      <p className="text-sm text-slate-400 whitespace-pre-line">{companySettings.companyAddress}</p>
+                    )}
+                    {(companySettings?.companyPhone || companySettings?.companyEmail) && (
+                      <div className="text-sm text-slate-400">
+                        {companySettings?.companyPhone && <span>{companySettings.companyPhone}</span>}
+                        {companySettings?.companyPhone && companySettings?.companyEmail && <span className="mx-2">|</span>}
+                        {companySettings?.companyEmail && <span>{companySettings.companyEmail}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-slate-300">{project?.name || 'Untitled Project'}</p>
+                  <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">Estimate</p>
+                  <p className="text-lg font-bold">{project?.estimateNumber || '#001'}</p>
                   <p className="text-sm text-slate-400">{project?.estimateDate || new Date().toISOString().split('T')[0]}</p>
                 </div>
               </div>
             </div>
 
-            {/* Client Info Bar */}
+            {/* Project & Client Info Bar */}
             <div className="px-10 py-6 border-b bg-slate-50 border-slate-200">
+              <div className="mb-4">
+                <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">Project</p>
+                <p className="mt-1 text-lg font-semibold text-slate-800">{project?.name || 'Untitled Project'}</p>
+              </div>
               <div className="grid grid-cols-3 gap-6">
                 <div>
                   <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">Client</p>
