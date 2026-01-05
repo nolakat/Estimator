@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat } from "lucide-react";
+import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -24,6 +24,7 @@ export default function App() {
   const [showCalculatorModal, setShowCalculatorModal] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState(false);
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
@@ -328,6 +329,21 @@ export default function App() {
     }
   };
 
+  // Format phone number as (XXX) XXX-XXXX
+  const formatPhoneNumber = (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length === 0) return '';
+    if (digits.length <= 3) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  // Validate email format
+  const isValidEmail = (email) => {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   // Common styles
   const inputClasses = "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 placeholder:text-slate-400";
   const labelClasses = "block mb-1.5 text-sm font-medium text-slate-700";
@@ -408,7 +424,44 @@ export default function App() {
       </div>
 
       <div className="max-w-6xl px-4 py-6 mx-auto md:px-8 md:py-8">
-        {/* Project & Client Card */}
+        {/* Project Name */}
+        <div className="flex items-center gap-3 mb-6">
+          {editingProjectName ? (
+            <>
+              <input
+                type="text"
+                autoFocus
+                className="text-2xl font-bold text-slate-800 bg-transparent border-b-2 border-amber-500 focus:outline-none px-1"
+                value={active?.name || ""}
+                onChange={(e) => updateActive({ name: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setEditingProjectName(false);
+                  if (e.key === 'Escape') setEditingProjectName(false);
+                }}
+              />
+              <button
+                onClick={() => setEditingProjectName(false)}
+                className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                title="Save"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-slate-800">{active?.name || "Untitled Project"}</h2>
+              <button
+                onClick={() => setEditingProjectName(true)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Edit project name"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Client Card */}
         <div className="mb-6 overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
           <div className="p-6">
             <div className="grid gap-6 md:grid-cols-2">
@@ -434,19 +487,22 @@ export default function App() {
                       type="tel"
                       placeholder="(555) 555-5555"
                       value={active?.clientPhone || ""}
-                      onChange={(e)=>updateActive({ clientPhone:e.target.value })}
+                      onChange={(e) => updateActive({ clientPhone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
                   <div>
                     <label htmlFor="clientEmail" className={labelClasses}>Client Email</label>
                     <input
                       id="clientEmail"
-                      className={inputClasses}
+                      className={`${inputClasses} ${active?.clientEmail && !isValidEmail(active.clientEmail) ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                       type="email"
                       placeholder="name@example.com"
                       value={active?.clientEmail || ""}
                       onChange={(e)=>updateActive({ clientEmail:e.target.value })}
                     />
+                    {active?.clientEmail && !isValidEmail(active.clientEmail) && (
+                      <p className="mt-1 text-xs text-red-500">Please enter a valid email address</p>
+                    )}
                   </div>
                 </div>
               </div>
