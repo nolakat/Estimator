@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X, Building2, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X, Building2, Settings, ChevronLeft, ChevronRight, Loader2, Menu } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -37,6 +37,20 @@ export default function App() {
     companyPhone: '',
     companyEmail: '',
   });
+  const [toast, setToast] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteSectionModal, setShowDeleteSectionModal] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState(null);
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
@@ -195,32 +209,46 @@ export default function App() {
     return calcTotals(active);
   }, [active]);
 
+  const MAX_PROJECTS = 5;
+
   const addProject = () => {
+    if (projects.length >= MAX_PROJECTS) {
+      showToast(`Project limit reached (${MAX_PROJECTS}). Delete a project to create a new one.`);
+      return;
+    }
     const p = emptyProject(`Project ${projects.length + 1}`);
     setProjects((prev) => [...prev, p]);
     setActiveId(p.id);
   };
 
-  const deleteProject = async () => {
-    if (!window.confirm("Delete this project? This cannot be undone.")) return;
+  const deleteProject = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteProject = async () => {
+    setDeleting(true);
     const projectId = active.id;
     const idx = projects.findIndex((p) => p.id === projectId);
     const next = projects.filter((p) => p.id !== projectId);
-    setProjects(next);
-    setActiveId(next[Math.max(0, idx - 1)]?.id);
 
-    // Delete from Firebase
     try {
+      // Delete from Firebase
       await estimatorService.deleteEstimate(projectId);
-    } catch (error) {
-      console.error('Failed to delete project from Firebase:', error);
-    }
 
-    // Also update localStorage
-    try {
+      // Update local state
+      setProjects(next);
+      setActiveId(next[Math.max(0, idx - 1)]?.id);
+
+      // Also update localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+
+      showToast('Project deleted successfully', 'success');
     } catch (error) {
-      console.error('Failed to update localStorage:', error);
+      console.error('Failed to delete project:', error);
+      showToast('Failed to delete project. Please try again.', 'error');
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -228,13 +256,29 @@ export default function App() {
   // Section helpers
   // ----------------------------
   const addSection = () => {
-    const name = window.prompt("Section name?", `Section ${active.sections.length + 1}`) || `Section ${active.sections.length + 1}`;
+    setNewSectionName(`Section ${active.sections.length + 1}`);
+    setShowAddSectionModal(true);
+  };
+
+  const confirmAddSection = () => {
+    const name = newSectionName.trim() || `Section ${active.sections.length + 1}`;
     updateActive({ sections: [...active.sections, { id: uuid(), name, items: [defaultItem()] }] });
+    setShowAddSectionModal(false);
+    setNewSectionName('');
   };
 
   const removeSection = (sectionId) => {
-    if (!window.confirm("Delete this section? Its items will be removed.")) return;
-    updateActive({ sections: active.sections.filter((s) => s.id !== sectionId) });
+    const section = active.sections.find(s => s.id === sectionId);
+    setSectionToDelete(section);
+    setShowDeleteSectionModal(true);
+  };
+
+  const confirmDeleteSection = () => {
+    if (!sectionToDelete) return;
+    updateActive({ sections: active.sections.filter((s) => s.id !== sectionToDelete.id) });
+    setShowDeleteSectionModal(false);
+    setSectionToDelete(null);
+    showToast('Section deleted', 'success');
   };
 
   const reorderSection = (draggedId, targetId) => {
@@ -330,6 +374,7 @@ export default function App() {
   };
 
   const manualSave = async () => {
+    setSaving(true);
     try {
       const userId = 'default-user';
       for (const project of projects) {
@@ -338,11 +383,12 @@ export default function App() {
           userId
         });
       }
-      // Show a brief success message
-      alert('All projects saved successfully!');
+      showToast('All projects saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving projects:', error);
-      alert('Error saving projects. Check console for details.');
+      showToast('Error saving projects. Please try again.', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -420,7 +466,7 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
       <div className="flex">
         {/* Sidebar */}
-        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 bg-white border-r border-slate-200 min-h-screen sticky top-0 transition-all duration-300 print:hidden`}>
+        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 bg-white border-r border-slate-200 min-h-screen sticky top-0 transition-all duration-300 print:hidden hidden md:block`}>
           <div className="flex flex-col h-screen">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
@@ -469,6 +515,12 @@ export default function App() {
           <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm print:hidden">
             <div className="px-4 py-3 mx-auto max-w-6xl md:px-8">
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors md:hidden"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
                 <ProjectSelect
                   value={active.id}
                   onValueChange={(v) => setActiveId(v)}
@@ -477,17 +529,40 @@ export default function App() {
 
                 <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-                <button onClick={addProject} className={buttonPrimary}>
+                <button
+                  onClick={addProject}
+                  disabled={projects.length >= MAX_PROJECTS}
+                  className={`${buttonPrimary} disabled:opacity-50 disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-500 disabled:shadow-none`}
+                >
                   <Plus className="w-4 h-4"/>New
                 </button>
-                <button onClick={deleteProject} className={buttonDanger}>
-                  <Trash2 className="w-4 h-4"/>Delete
+                <span className={`text-xs font-medium tabular-nums ${projects.length >= MAX_PROJECTS ? 'text-red-600' : 'text-slate-500'}`}>{projects.length}/{MAX_PROJECTS}</span>
+                <button
+                  onClick={deleteProject}
+                  disabled={deleting}
+                  className={`${buttonDanger} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {deleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin"/>
+                  ) : (
+                    <Trash2 className="w-4 h-4"/>
+                  )}
+                  {deleting ? 'Deleting...' : 'Delete'}
                 </button>
 
                 <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
 
-                <button onClick={manualSave} className={buttonSecondary}>
-                  <Save className="w-4 h-4"/>Save
+                <button
+                  onClick={manualSave}
+                  disabled={saving}
+                  className={`${buttonSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin"/>
+                  ) : (
+                    <Save className="w-4 h-4"/>
+                  )}
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
 
                 <div className="hidden w-px h-8 mx-1 bg-slate-200 sm:block" />
@@ -795,6 +870,200 @@ export default function App() {
         onSave={saveCompanySettings}
       />
 
+      {/* Delete Project Confirmation Modal */}
+      {showDeleteModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => !deleting && setShowDeleteModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto mx-4 animate-modal-pop">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-center text-slate-800 mb-2">
+                  Delete Project
+                </h3>
+                <p className="text-sm text-center text-slate-500 mb-6">
+                  Are you sure you want to delete "<span className="font-medium text-slate-700">{active?.name}</span>"? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteProject}
+                    disabled={deleting}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Project'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm md:hidden animate-fade-in"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl md:hidden animate-slide-in-left">
+            <div className="flex flex-col h-full">
+              {/* Mobile Sidebar Header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                    <HardHat className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-semibold text-slate-800">Estimator</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Mobile Sidebar Navigation */}
+              <nav className="flex-1 p-3 space-y-1">
+                <button
+                  onClick={() => {
+                    setShowCompanyModal(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                >
+                  <Building2 className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">Company Settings</span>
+                </button>
+              </nav>
+
+              {/* Mobile Sidebar Footer */}
+              <div className="p-4 border-t border-slate-100">
+                <p className="text-xs text-slate-400 text-center">
+                  © {new Date().getFullYear()} Contractor Estimator
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Add Section Modal */}
+      {showAddSectionModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setShowAddSectionModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto mx-4 animate-modal-pop">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-amber-100">
+                  <Plus className="w-6 h-6 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-center text-slate-800 mb-2">
+                  Add New Section
+                </h3>
+                <p className="text-sm text-center text-slate-500 mb-4">
+                  Enter a name for your new section
+                </p>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmAddSection();
+                    if (e.key === 'Escape') setShowAddSectionModal(false);
+                  }}
+                  placeholder="Section name"
+                  className="w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 mb-6"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowAddSectionModal(false);
+                      setNewSectionName('');
+                    }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmAddSection}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all duration-200"
+                  >
+                    Add Section
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete Section Confirmation Modal */}
+      {showDeleteSectionModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setShowDeleteSectionModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto mx-4 animate-modal-pop">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-center text-slate-800 mb-2">
+                  Delete Section
+                </h3>
+                <p className="text-sm text-center text-slate-500 mb-6">
+                  Are you sure you want to delete "<span className="font-medium text-slate-700">{sectionToDelete?.name}</span>"? All items in this section will be removed.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteSectionModal(false);
+                      setSectionToDelete(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteSection}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200"
+                  >
+                    Delete Section
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Login Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
@@ -810,6 +1079,27 @@ export default function App() {
         </div>
       )}
 
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in duration-300">
+          <div className={`px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
+            toast.type === 'error'
+              ? 'bg-red-600 text-white'
+              : toast.type === 'success'
+              ? 'bg-green-600 text-white'
+              : 'bg-slate-800 text-white'
+          }`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* print styles */}
       <style>{`
         @media print {
@@ -819,6 +1109,26 @@ export default function App() {
           .bg-gray-50 { background-color: #f9fafb !important; }
           textarea { border: 1px solid #d1d5db !important; background: white !important; }
         }
+        @keyframes slide-in-from-bottom-2 {
+          from { transform: translateY(0.5rem); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-in { animation: slide-in-from-bottom-2 0.3s ease-out; }
+        @keyframes slide-in-left {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-left { animation: slide-in-left 0.3s ease-out; }
+        @keyframes modal-pop {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-modal-pop { animation: modal-pop 0.2s ease-out; }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
       `}</style>
     </div>
     </AuthWrapper>
