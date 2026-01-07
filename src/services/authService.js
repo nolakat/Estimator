@@ -3,6 +3,10 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -28,9 +32,26 @@ export const authService = {
         await updateProfile(userCredential.user, { displayName });
       }
 
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
+
       return userCredential.user;
     } catch (error) {
       throw new Error(this.getErrorMessage(error.code));
+    }
+  },
+
+  // Resend verification email
+  async resendVerificationEmail(user) {
+    try {
+      if (!user) throw new Error('No user logged in');
+      if (user.emailVerified) throw new Error('Email is already verified');
+      await sendEmailVerification(user);
+    } catch (error) {
+      if (error.code) {
+        throw new Error(this.getErrorMessage(error.code));
+      }
+      throw error;
     }
   },
 
@@ -52,6 +73,27 @@ export const authService = {
     }
   },
 
+  // Change password (requires current password for security)
+  async changePassword(currentPassword, newPassword) {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('No user logged in');
+      if (!user.email) throw new Error('User email not found');
+
+      // Reauthenticate user with current password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Update to new password
+      await updatePassword(user, newPassword);
+    } catch (error) {
+      if (error.code) {
+        throw new Error(this.getErrorMessage(error.code));
+      }
+      throw error;
+    }
+  },
+
   // Get user-friendly error messages
   getErrorMessage(errorCode) {
     switch (errorCode) {
@@ -59,6 +101,8 @@ export const authService = {
         return 'No account found with this email address.';
       case 'auth/wrong-password':
         return 'Incorrect password. Please try again.';
+      case 'auth/invalid-credential':
+        return 'Current password is incorrect.';
       case 'auth/invalid-email':
         return 'Please enter a valid email address.';
       case 'auth/weak-password':
@@ -67,6 +111,8 @@ export const authService = {
         return 'An account with this email already exists.';
       case 'auth/too-many-requests':
         return 'Too many failed attempts. Please try again later.';
+      case 'auth/requires-recent-login':
+        return 'Please sign out and sign back in, then try again.';
       default:
         return 'An error occurred. Please try again.';
     }

@@ -2,20 +2,30 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Download, Loader2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export function EstimatePreviewModal({ isOpen, onClose, project, companySettings, totals, money, sectionSubtotal }) {
+export function EstimatePreviewModal({ isOpen, onClose, project, companySettings, signatureSettings, totals, money, sectionSubtotal }) {
   const contentRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Load Google Fonts for signature
+      if (signatureSettings?.font) {
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=Allura&family=Caveat&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Satisfy&display=swap';
+        link.rel = 'stylesheet';
+        link.id = 'signature-fonts';
+        if (!document.getElementById('signature-fonts')) {
+          document.head.appendChild(link);
+        }
+      }
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, signatureSettings?.font]);
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
@@ -269,6 +279,41 @@ export function EstimatePreviewModal({ isOpen, onClose, project, companySettings
               <div className="px-10 py-6 border-t border-slate-200">
                 <h3 className="mb-3 text-sm font-semibold tracking-wider uppercase text-slate-400">Terms & Notes</h3>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-600">{project.notes}</p>
+              </div>
+            )}
+
+            {/* Signature */}
+            {signatureSettings?.name && (
+              <div className="px-10 py-8 border-t border-slate-200">
+                <div className="grid grid-cols-2 gap-8">
+                  {/* Contractor Signature */}
+                  <div>
+                    <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-4">Authorized By</p>
+                    <div className="border-b-2 border-slate-300 pb-2 mb-2">
+                      <span
+                        style={{
+                          fontFamily: `"${signatureSettings.font}", cursive`,
+                          fontSize: '1.75rem',
+                          color: '#1e40af',
+                        }}
+                      >
+                        {signatureSettings.name}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600">{signatureSettings.name}</p>
+                    <p className="text-xs text-slate-400">{new Date().toLocaleDateString()}</p>
+                  </div>
+
+                  {/* Client Signature (blank for them to sign) */}
+                  <div>
+                    <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-4">Client Approval</p>
+                    <div className="border-b-2 border-slate-300 pb-2 mb-2 min-h-10">
+                      {/* Empty space for client signature */}
+                    </div>
+                    <p className="text-sm text-slate-600">Client Signature</p>
+                    <p className="text-xs text-slate-400">Date: _______________</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

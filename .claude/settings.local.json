@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(CI=true npm test)"
+      "Bash(CI=true npm test)",
+      "Bash(cat:*)"
     ]
   }
 }

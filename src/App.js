@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AuthWrapper } from "./components/auth/AuthWrapper";
-import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X, Building2, Settings, ChevronLeft, ChevronRight, Loader2, Menu } from "lucide-react";
+import { AuthWrapper, useUser } from "./components/auth/AuthWrapper";
+import { Plus, Trash2, Printer, Save, FileText, Package, Calculator, HardHat, Pencil, Check, X, Building2, Settings, ChevronLeft, ChevronRight, Loader2, Menu, Key, Eye, EyeOff, CheckCircle, PenTool } from "lucide-react";
 import { ProjectSelect } from "./components/estimator/ProjectSelect";
 import { SectionCard } from "./components/estimator/SectionCard";
 import { SummaryRow } from "./components/estimator/SummaryRow";
@@ -11,13 +11,36 @@ import { CompanySettingsModal } from "./components/settings/CompanySettingsModal
 import { uuid, money, calcTotals, sectionSubtotal } from "./utils/estimator";
 import { STORAGE_KEY, defaultItem, emptyProject } from "./constants/estimator";
 import { estimatorService } from "./services/estimatorService";
+import { authService } from "./services/authService";
 
-const COMPANY_SETTINGS_KEY = "contractor-estimator-company";
+// Helper functions to create user-specific localStorage keys
+const getCompanySettingsKey = (userId) => `contractor-estimator-company-${userId}`;
+const getProjectsStorageKey = (userId) => `${STORAGE_KEY}-${userId}`;
+const getSignatureSettingsKey = (userId) => `contractor-estimator-signature-${userId}`;
+
+// Signature font options
+const SIGNATURE_FONTS = [
+  { value: 'Dancing Script', label: 'Dancing Script' },
+  { value: 'Pacifico', label: 'Pacifico' },
+  { value: 'Great Vibes', label: 'Great Vibes' },
+  { value: 'Satisfy', label: 'Satisfy' },
+  { value: 'Caveat', label: 'Caveat' },
+  { value: 'Allura', label: 'Allura' },
+];
 
 // ----------------------------
 // main component
 // ----------------------------
 export default function App() {
+  return (
+    <AuthWrapper>
+      <AppContent />
+    </AuthWrapper>
+  );
+}
+
+function AppContent() {
+  const user = useUser();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
@@ -46,6 +69,20 @@ export default function App() {
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureSettings, setSignatureSettings] = useState({
+    name: '',
+    font: 'Dancing Script',
+  });
 
   const showToast = (message, type = 'error') => {
     setToast({ message, type });
@@ -54,38 +91,59 @@ export default function App() {
 
   const active = useMemo(() => projects.find((p) => p.id === activeId) || projects[0], [projects, activeId]);
 
-  // Load company settings from localStorage on mount
+  // Load company settings from localStorage on mount (user-specific)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(COMPANY_SETTINGS_KEY);
+      const saved = localStorage.getItem(getCompanySettingsKey(user.uid));
       if (saved) {
         setCompanySettings(JSON.parse(saved));
       }
     } catch (error) {
       console.warn('Failed to load company settings:', error);
     }
-  }, []);
+  }, [user.uid]);
 
-  // Save company settings
+  // Save company settings (user-specific)
   const saveCompanySettings = (settings) => {
     setCompanySettings(settings);
     try {
-      localStorage.setItem(COMPANY_SETTINGS_KEY, JSON.stringify(settings));
+      localStorage.setItem(getCompanySettingsKey(user.uid), JSON.stringify(settings));
     } catch (error) {
       console.warn('Failed to save company settings:', error);
     }
   };
 
+  // Load signature settings from localStorage on mount (user-specific)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(getSignatureSettingsKey(user.uid));
+      if (saved) {
+        setSignatureSettings(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.warn('Failed to load signature settings:', error);
+    }
+  }, [user.uid]);
+
+  // Save signature settings (user-specific)
+  const saveSignatureSettings = (settings) => {
+    setSignatureSettings(settings);
+    try {
+      localStorage.setItem(getSignatureSettingsKey(user.uid), JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Failed to save signature settings:', error);
+    }
+  };
 
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const userId = 'default-user';
+      const userId = user.uid;
 
-      // First, try to load from localStorage as a backup
+      // First, try to load from localStorage as a backup (user-specific)
       let localProjects = [];
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(getProjectsStorageKey(userId));
         if (raw) {
           const parsed = JSON.parse(raw);
           localProjects = Array.isArray(parsed) ? parsed : [parsed];
@@ -173,7 +231,7 @@ export default function App() {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
-          const userId = 'default-user';
+          const userId = user.uid;
           for (const project of projects) {
             try {
               await estimatorService.saveEstimate({
@@ -187,9 +245,9 @@ export default function App() {
           }
         } catch (error) {
           console.error('Error saving to Firebase:', error.message);
-          // Fallback to localStorage
+          // Fallback to localStorage (user-specific)
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+            localStorage.setItem(getProjectsStorageKey(user.uid), JSON.stringify(projects));
           } catch (localError) {
             console.error('Failed to save to localStorage as well:', localError);
           }
@@ -239,8 +297,8 @@ export default function App() {
       setProjects(next);
       setActiveId(next[Math.max(0, idx - 1)]?.id);
 
-      // Also update localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      // Also update localStorage (user-specific)
+      localStorage.setItem(getProjectsStorageKey(user.uid), JSON.stringify(next));
 
       showToast('Project deleted successfully', 'success');
     } catch (error) {
@@ -376,7 +434,7 @@ export default function App() {
   const manualSave = async () => {
     setSaving(true);
     try {
-      const userId = 'default-user';
+      const userId = user.uid;
       for (const project of projects) {
         await estimatorService.saveEstimate({
           ...project,
@@ -414,6 +472,56 @@ export default function App() {
       // The AuthWrapper will handle the actual logout.
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  // Change password handlers
+  const openChangePasswordModal = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordSuccess(false);
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowChangePasswordModal(true);
+  };
+
+  const closeChangePasswordModal = () => {
+    setShowChangePasswordModal(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordSuccess(false);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    // Validate passwords
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError('New password must be different from current password.');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await authService.changePassword(currentPassword, newPassword);
+      setPasswordSuccess(true);
+    } catch (error) {
+      setPasswordError(error.message || 'Failed to change password.');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -462,7 +570,6 @@ export default function App() {
   }
 
   return (
-    <AuthWrapper>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
       <div className="flex">
         {/* Sidebar */}
@@ -495,6 +602,22 @@ export default function App() {
               >
                 <Building2 className="w-5 h-5 flex-shrink-0" />
                 {!sidebarCollapsed && <span className="text-sm font-medium">Company Settings</span>}
+              </button>
+              <button
+                onClick={openChangePasswordModal}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title="Change Password"
+              >
+                <Key className="w-5 h-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span className="text-sm font-medium">Change Password</span>}
+              </button>
+              <button
+                onClick={() => setShowSignatureModal(true)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title="Signature"
+              >
+                <PenTool className="w-5 h-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span className="text-sm font-medium">Signature</span>}
               </button>
             </nav>
 
@@ -840,6 +963,7 @@ export default function App() {
         onClose={() => setShowEstimateModal(false)}
         project={active}
         companySettings={companySettings}
+        signatureSettings={signatureSettings}
         totals={totals}
         money={money}
         sectionSubtotal={sectionSubtotal}
@@ -849,7 +973,7 @@ export default function App() {
       <ProductCatalogModal
         isOpen={showCatalogModal}
         onClose={() => setShowCatalogModal(false)}
-        userId="default-user"
+        userId={user.uid}
         sections={active?.sections || []}
         onAddToEstimate={addProductToSection}
       />
@@ -869,6 +993,267 @@ export default function App() {
         companySettings={companySettings}
         onSave={saveCompanySettings}
       />
+
+      {/* Change Password Modal */}
+      {showChangePasswordModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => !changingPassword && closeChangePasswordModal()}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto overflow-hidden animate-modal-pop">
+              {passwordSuccess ? (
+                // Success State
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-green-100">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-center text-slate-800 mb-2">
+                    Password Changed
+                  </h3>
+                  <p className="text-sm text-center text-slate-500 mb-6">
+                    Your password has been successfully updated. Use your new password the next time you sign in.
+                  </p>
+                  <button
+                    onClick={closeChangePasswordModal}
+                    className="w-full px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-500/25"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                // Form State
+                <>
+                  <div className="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
+                        <Key className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-800 tracking-tight">Change Password</h2>
+                        <p className="text-sm text-slate-500">Update your account password</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeChangePasswordModal}
+                      disabled={changingPassword}
+                      className="absolute p-2 transition-all duration-200 rounded-full top-4 right-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                    <div>
+                      <label htmlFor="currentPassword" className={labelClasses}>Current Password</label>
+                      <div className="relative">
+                        <input
+                          id="currentPassword"
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          required
+                          placeholder="Enter current password"
+                          className={`${inputClasses} pr-12`}
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 transition-colors"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        >
+                          {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="newPassword" className={labelClasses}>New Password</label>
+                      <div className="relative">
+                        <input
+                          id="newPassword"
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          placeholder="Enter new password (min 6 characters)"
+                          className={`${inputClasses} pr-12`}
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 transition-colors"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="confirmPassword" className={labelClasses}>Confirm New Password</label>
+                      <input
+                        id="confirmPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        placeholder="Confirm new password"
+                        className={inputClasses}
+                      />
+                    </div>
+
+                    {passwordError && (
+                      <div className="p-3 border border-red-200 rounded-xl bg-red-50">
+                        <p className="text-sm text-red-600">{passwordError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={closeChangePasswordModal}
+                        disabled={changingPassword}
+                        className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                      >
+                        {changingPassword ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Changing...
+                          </>
+                        ) : (
+                          'Change Password'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setShowSignatureModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto overflow-hidden animate-modal-pop">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
+                    <PenTool className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-800 tracking-tight">Signature</h2>
+                    <p className="text-sm text-slate-500">Create your digital signature</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSignatureModal(false)}
+                  className="absolute p-2 transition-all duration-200 rounded-full top-4 right-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 space-y-5">
+                {/* Name Input */}
+                <div>
+                  <label htmlFor="signatureName" className={labelClasses}>Your Name</label>
+                  <input
+                    id="signatureName"
+                    type="text"
+                    value={signatureSettings.name}
+                    onChange={(e) => setSignatureSettings(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter your full name"
+                    className={inputClasses}
+                  />
+                </div>
+
+                {/* Font Selection */}
+                <div>
+                  <label htmlFor="signatureFont" className={labelClasses}>Font Style</label>
+                  <select
+                    id="signatureFont"
+                    value={signatureSettings.font}
+                    onChange={(e) => setSignatureSettings(prev => ({ ...prev, font: e.target.value }))}
+                    className={inputClasses}
+                  >
+                    {SIGNATURE_FONTS.map((font) => (
+                      <option key={font.value} value={font.value}>
+                        {font.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Signature Preview */}
+                <div>
+                  <label className={labelClasses}>Preview</label>
+                  <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl min-h-24 flex items-center justify-center">
+                    {signatureSettings.name ? (
+                      <span
+                        style={{
+                          fontFamily: `"${signatureSettings.font}", cursive`,
+                          fontSize: '2.5rem',
+                          color: '#1e293b',
+                        }}
+                      >
+                        {signatureSettings.name}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-sm italic">
+                        Enter your name to see the preview
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/80">
+                <button
+                  onClick={() => setShowSignatureModal(false)}
+                  className="px-4 py-2 text-sm font-medium transition-all duration-200 border rounded-xl text-slate-600 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    saveSignatureSettings(signatureSettings);
+                    setShowSignatureModal(false);
+                    showToast('Signature saved successfully', 'success');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all duration-200 shadow-lg shadow-amber-500/25"
+                >
+                  Save Signature
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Load Google Fonts for signatures */}
+          <link
+            href="https://fonts.googleapis.com/css2?family=Allura&family=Caveat&family=Dancing+Script&family=Great+Vibes&family=Pacifico&family=Satisfy&display=swap"
+            rel="stylesheet"
+          />
+        </>
+      )}
 
       {/* Delete Project Confirmation Modal */}
       {showDeleteModal && (
@@ -954,6 +1339,26 @@ export default function App() {
                 >
                   <Building2 className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm font-medium">Company Settings</span>
+                </button>
+                <button
+                  onClick={() => {
+                    openChangePasswordModal();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                >
+                  <Key className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">Change Password</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSignatureModal(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                >
+                  <PenTool className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">Signature</span>
                 </button>
               </nav>
 
@@ -1131,6 +1536,5 @@ export default function App() {
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
       `}</style>
     </div>
-    </AuthWrapper>
   );
 }

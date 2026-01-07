@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Search, Edit2, Trash2, ShoppingCart, ExternalLink, Package, Tag } from 'lucide-react';
+import { X, Plus, Search, Edit2, Trash2, ShoppingCart, ExternalLink, Package, Tag, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { productService } from '../../services/productService';
 import { PRODUCT_CATEGORIES } from '../../constants/products';
@@ -22,6 +22,9 @@ export function ProductCatalogModal({
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [addingProduct, setAddingProduct] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,13 +64,23 @@ export function ProductCatalogModal({
     }
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Delete this product from your catalog?')) return;
+  const handleDeleteProduct = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setDeleting(true);
     try {
-      await productService.deleteProduct(productId);
-      setProducts((prev) => prev.filter((p) => p.id !== productId));
+      await productService.deleteProduct(productToDelete.id, userId);
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setShowDeleteModal(false);
+      setProductToDelete(null);
     } catch (error) {
       console.error('Failed to delete product:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -271,7 +284,7 @@ export function ProductCatalogModal({
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteProduct(product.id)}
+                          onClick={() => handleDeleteProduct(product)}
                           className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-150"
                           title="Delete product"
                         >
@@ -317,6 +330,71 @@ export function ProductCatalogModal({
         sections={sections}
         onConfirm={onAddToEstimate}
       />
+
+      {/* Delete Product Confirmation Modal */}
+      {showDeleteModal && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm"
+            style={{ animation: 'fade-in 0.2s ease-out' }}
+            onClick={() => !deleting && setShowDeleteModal(false)}
+          />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+            <div
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto mx-4"
+              style={{ animation: 'modal-pop 0.2s ease-out' }}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-center text-slate-800 mb-2">
+                  Delete Product
+                </h3>
+                <p className="text-sm text-center text-slate-500 mb-6">
+                  Are you sure you want to delete "<span className="font-medium text-slate-700">{productToDelete?.name}</span>" from your catalog? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setProductToDelete(null);
+                    }}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteProduct}
+                    disabled={deleting}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Product'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes modal-pop {
+              from { transform: scale(0.95); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes fade-in {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
+        </>
+      )}
     </>
   );
 }
